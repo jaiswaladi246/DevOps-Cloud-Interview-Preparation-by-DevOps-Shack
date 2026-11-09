@@ -53,11 +53,6 @@ This repo is built around that reality. Every topic has the same structure: conc
 | 09 | ☁️ [**AWS**](./09-aws/README.md) | [200](./09-aws/concepts.md) | [200](./09-aws/scenarios.md) | [200](./09-aws/troubleshooting.md) | [200](./09-aws/production.md) | [Lab](./09-aws/hands-on-lab.md) · [25](./09-aws/assignments.md) · [Sheet](./09-aws/cheatsheet.md) |
 | 10 | 📈 [**Monitoring & Observability**](./10-monitoring/README.md) | [200](./10-monitoring/concepts.md) | [200](./10-monitoring/scenarios.md) | [200](./10-monitoring/troubleshooting.md) | [200](./10-monitoring/production.md) | [Lab](./10-monitoring/hands-on-lab.md) · [25](./10-monitoring/assignments.md) · [Sheet](./10-monitoring/cheatsheet.md) |
 | 11 | 🛡️ [**DevSecOps**](./11-devsecops/README.md) | [200](./11-devsecops/concepts.md) | [200](./11-devsecops/scenarios.md) | [200](./11-devsecops/troubleshooting.md) | [200](./11-devsecops/production.md) | [Lab](./11-devsecops/hands-on-lab.md) · [25](./11-devsecops/assignments.md) · [Sheet](./11-devsecops/cheatsheet.md) |
-
-### 🧰 Specialised tools & cloud (8 more topics)
-
-| # | Topic | Concepts | Scenarios & Troubleshooting | Lab · Assignments · Cheatsheet |
-|:-:|---|:-:|:-:|:-:|
 | 12 | 🐚 [**Shell Scripting (Bash)**](./12-shell-scripting/README.md) | [200](./12-shell-scripting/concepts.md) | [200](./12-shell-scripting/scenarios-and-troubleshooting.md) | [Lab](./12-shell-scripting/hands-on-lab.md) · [25](./12-shell-scripting/assignments.md) · [Sheet](./12-shell-scripting/cheatsheet.md) |
 | 13 | 🐍 [**Python for DevOps**](./13-python-for-devops/README.md) | [200](./13-python-for-devops/concepts.md) | [200](./13-python-for-devops/scenarios-and-troubleshooting.md) | [Lab](./13-python-for-devops/hands-on-lab.md) · [25](./13-python-for-devops/assignments.md) · [Sheet](./13-python-for-devops/cheatsheet.md) |
 | 14 | 🤵 [**Jenkins**](./14-jenkins/README.md) | [200](./14-jenkins/concepts.md) | [200](./14-jenkins/scenarios-and-troubleshooting.md) | [Lab](./14-jenkins/hands-on-lab.md) · [25](./14-jenkins/assignments.md) · [Sheet](./14-jenkins/cheatsheet.md) |
