@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F1A"/>
+      <stop offset="1" stop-color="#141B2E"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#C6FF4D"/>
+      <stop offset="1" stop-color="#4DE8FF"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#FFFFFF" stroke-opacity="0.05"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.85" cy="0.2" r="0.6">
+      <stop offset="0" stop-color="#C6FF4D" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#C6FF4D" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="420" fill="url(#bg)"/>
+  <rect width="1280" height="420" fill="url(#grid)"/>
+  <rect width="1280" height="420" fill="url(#glow)"/>
+
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <rect x="72" y="62" rx="16" ry="16" width="500" height="34" fill="#C6FF4D" fill-opacity="0.12" stroke="#C6FF4D" stroke-opacity="0.5"/>
+    <text x="92" y="85" font-size="16" font-weight="700" fill="#C6FF4D" letter-spacing="2">BY DEVOPS SHACK · YOUTUBE @DEVOPSSHACK</text>
+
+    <text x="72" y="168" font-size="64" font-weight="800" fill="#FFFFFF">DevOps &amp; Cloud</text>
+    <text x="72" y="238" font-size="64" font-weight="800" fill="url(#acc)">Interview Preparation</text>
+
+    <text x="72" y="290" font-size="22" fill="#C9CED6">Scenarios · Troubleshooting · Production · Live Tasks · Labs · Assignments</text>
+
+    <g transform="translate(72,320)">
+      <rect width="210" height="58" rx="12" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <text x="18" y="38" font-size="28" font-weight="800" fill="#C6FF4D">13,200</text>
+      <text x="130" y="37" font-size="15" fill="#C9CED6">Q&amp;As</text>
+      <rect x="226" width="190" height="58" rx="12" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <text x="244" y="38" font-size="28" font-weight="800" fill="#4DE8FF">20</text>
+      <text x="284" y="37" font-size="15" fill="#C9CED6">topics</text>
+      <rect x="432" width="230" height="58" rx="12" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <text x="450" y="38" font-size="28" font-weight="800" fill="#FFB84D">20</text>
+      <text x="490" y="37" font-size="15" fill="#C9CED6">hands-on labs</text>
+      <rect x="678" width="250" height="58" rx="12" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.12"/>
+      <text x="696" y="38" font-size="28" font-weight="800" fill="#FF6B9A">500</text>
+      <text x="756" y="37" font-size="15" fill="#C9CED6">assignments</text>
+    </g>
+  </g>
+
+  <g transform="translate(1010,110)" font-family="JetBrains Mono, Consolas, monospace" font-size="14">
+    <rect width="210" height="200" rx="14" fill="#0B0F1A" stroke="#C6FF4D" stroke-opacity="0.35"/>
+    <circle cx="20" cy="20" r="5" fill="#FF5F57"/><circle cx="38" cy="20" r="5" fill="#FEBC2E"/><circle cx="56" cy="20" r="5" fill="#28C840"/>
+    <text x="18" y="60" fill="#C6FF4D">$ kubectl get pods</text>
+    <text x="18" y="86" fill="#FF6B6B">CrashLoopBackOff</text>
+    <text x="18" y="112" fill="#C9CED6">$ kubectl logs</text>
+    <text x="18" y="132" fill="#C9CED6">  --previous</text>
+    <text x="18" y="160" fill="#4DE8FF"># found it ✔</text>
+    <text x="18" y="186" fill="#8A93A6">interview ready</text>
+  </g>
+</svg>
