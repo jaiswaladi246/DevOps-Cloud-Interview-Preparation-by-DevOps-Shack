@@ -188,12 +188,13 @@ A Flask or FastAPI app with `/healthz` (liveness: the process is alive) and `/re
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | Language essentials, exceptions, file I/O, venv and packaging, os/pathlib/subprocess, JSON/YAML/CSV, requests and retries, boto3, kubernetes/docker/paramiko clients, concurrency, pytest and moto, Flask/FastAPI, Prometheus metrics, best practices and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | Q1–Q100: "what would you do" automation, AWS, Kubernetes, CI and service design situations. Q101–Q200: real error messages such as `ModuleNotFoundError`, `externally-managed-environment`, `NoCredentialsError`, `ThrottlingException`, `SSLError`, `RuntimeError: This event loop is already running` |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

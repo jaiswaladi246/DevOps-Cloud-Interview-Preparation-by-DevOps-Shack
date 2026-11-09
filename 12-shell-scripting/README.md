@@ -183,12 +183,13 @@ Never `eval` user input, never build commands by string concatenation, and pass 
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | Expansion order, quoting, parameter expansion, arrays, conditionals, loops, functions, exit codes, strict mode, traps, `getopts`, here-docs, process substitution, subshells, grep/sed/awk/sort/xargs/find, jq and yq, cron and systemd timers, ShellCheck, portability, security, best practices and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | Q1–Q100: real automation situations (backups to S3, log rotation, health checks, deploys, user management, alerts, parsing at scale). Q101–Q200: real error text such as `bad interpreter: No such file or directory`, `unbound variable`, `[: too many arguments`, `status=203/EXEC`, cron jobs that never run, and `jq: error ... Cannot iterate over null` |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

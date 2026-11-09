@@ -1,4 +1,4 @@
-# SRE & Reliability — Scenarios & Troubleshooting
+# SRE & Reliability — Scenario-Based Questions
 
 <!-- DEVOPS-SHACK:HEADER -->
 <p align="center">
@@ -11,13 +11,11 @@
 <p align="center"><sub>Part of <b><a href="https://github.com/jaiswaladi246/DevOps-Cloud-Interview-Preparation-by-DevOps-Shack">DevOps &amp; Cloud Interview Preparation</a></b> — created by <b><a href="https://www.youtube.com/@devopsshack">DevOps Shack</a></b>. Free to learn from; please credit DevOps Shack when sharing.</sub></p>
 <!-- /DEVOPS-SHACK:HEADER -->
 
-> 100 real-world "what would you do" scenarios and 100 troubleshooting drills with real error text, from SLO negotiations and SEV-1s to broken burn-rate alerts, k6 runs and chaos experiments · 200 questions · 🟢 Beginner 🟡 Intermediate 🔴 Advanced
+> Real-world SRE & Reliability situations and how to reason through them in an interview · 125 questions · 🟢 Beginner 🟡 Intermediate 🔴 Advanced
 
 [⬅ Back to SRE & Reliability](./README.md) · [🏠 Home](../README.md)
 
 ## Table of contents
-
-**Part 1: Scenarios (Q1–Q100)**
 - [SLO Design & Error Budget Decisions](#slo-design--error-budget-decisions) — Q1–Q16
 - [Alerting & On-Call](#alerting--on-call) — Q17–Q30
 - [Running Incidents](#running-incidents) — Q31–Q50
@@ -26,19 +24,9 @@
 - [Chaos Engineering & Game Days](#chaos-engineering--game-days) — Q72–Q81
 - [Releases & Reliability Patterns](#releases--reliability-patterns) — Q82–Q93
 - [Backup & Disaster Recovery](#backup--disaster-recovery) — Q94–Q100
-
-**Part 2: Troubleshooting (Q101–Q200)**
-- [Prometheus SLIs & Recording Rules](#prometheus-slis--recording-rules) — Q101–Q120
-- [Burn-Rate Alerts & Alertmanager](#burn-rate-alerts--alertmanager) — Q121–Q137
-- [Grafana SLO Dashboards](#grafana-slo-dashboards) — Q138–Q146
-- [k6 Load Testing](#k6-load-testing) — Q147–Q161
-- [Chaos Mesh, Litmus & AWS FIS](#chaos-mesh-litmus--aws-fis) — Q162–Q176
-- [Reliability Patterns in Production](#reliability-patterns-in-production) — Q177–Q190
-- [Backups, DR & Runbook Automation](#backups-dr--runbook-automation) — Q191–Q200
+- [Observability & Telemetry Decisions](#observability--telemetry-decisions) — Q101–Q125
 
 ---
-
-# Part 1: Scenarios
 
 ## SLO Design & Error Budget Decisions
 
@@ -374,8 +362,6 @@
 
 </details>
 
----
-
 ## Alerting & On-Call
 
 <!-- DEVOPS-SHACK:SECTION -->
@@ -675,8 +661,6 @@
 **Interview tip →** Redirect, do not refuse: offer the right tool for the real need.
 
 </details>
-
----
 
 ## Running Incidents
 
@@ -1086,8 +1070,6 @@
 
 </details>
 
----
-
 ## Postmortems & Reliability Culture
 
 <!-- DEVOPS-SHACK:SECTION -->
@@ -1288,8 +1270,6 @@
 **Interview tip →** Combine user, delivery and people metrics in your answer.
 
 </details>
-
----
 
 ## Capacity & Load Testing
 
@@ -1525,8 +1505,6 @@
 
 </details>
 
----
-
 ## Chaos Engineering & Game Days
 
 <!-- DEVOPS-SHACK:SECTION -->
@@ -1731,8 +1709,6 @@
 **Interview tip →** "Backup and restore test before any stateful chaos."
 
 </details>
-
----
 
 ## Releases & Reliability Patterns
 
@@ -1977,8 +1953,6 @@
 
 </details>
 
----
-
 ## Backup & Disaster Recovery
 
 <!-- DEVOPS-SHACK:SECTION -->
@@ -2122,1947 +2096,571 @@
 
 </details>
 
----
-
-# Part 2: Troubleshooting
-
-## Prometheus SLIs & Recording Rules
+## Observability & Telemetry Decisions
 
 <!-- DEVOPS-SHACK:SECTION -->
 > 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
 
-### Q101. You applied a `PrometheusRule` for your SLO, but `slo:sli_error:ratio_rate5m` returns nothing in Prometheus. 🟢
+### Q101. Your team has metrics and logs but no tracing. A request to checkout fans out to 9 services and nobody can tell where the 2 seconds go. How do you introduce tracing? 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The Prometheus Operator is not selecting the rule (label mismatch with `ruleSelector`), the rule is in a namespace outside `ruleNamespaceSelector`, or the expression itself returns no data.
+**Situation read →** Metrics tell you *that* checkout is slow, logs tell you *something* happened in one service; only traces show the critical path across nine hops. The goal is useful traces quickly, not a perfect rollout.
 
-**Diagnose →**
-```bash
-kubectl get prometheus -n monitoring -o jsonpath='{.items[0].spec.ruleSelector}'
-kubectl get prometheusrule -A --show-labels | grep checkout
-curl -s localhost:9090/api/v1/rules | jq '.data.groups[].name'
-```
+**What I'd do →**
+1. Pick OpenTelemetry as the standard so we are not locked to a vendor backend.
+2. Deploy an OpenTelemetry Collector (agent DaemonSet plus a gateway Deployment) and a backend such as Grafana Tempo or Jaeger.
+3. Start with zero-code auto-instrumentation via the OpenTelemetry Operator:
+   ```yaml
+   apiVersion: opentelemetry.io/v1alpha1
+   kind: Instrumentation
+   metadata:
+     name: default
+     namespace: shop
+   spec:
+     exporter:
+       endpoint: http://otel-collector.observability:4318
+     propagators: [tracecontext, baggage]
+     sampler:
+       type: parentbased_traceidratio
+       argument: "0.1"
+   ```
+   Then annotate deployments with `instrumentation.opentelemetry.io/inject-java: "true"` (or `-python`, `-nodejs`).
+4. Instrument the checkout path first, end to end, including the ingress so trace context starts at the edge.
+5. Add manual spans only where auto-instrumentation is blind (queue consumers, batch steps).
+6. Link traces to metrics with exemplars and to logs by injecting `trace_id` into every log line.
 
-**Fix →** Add the label the selector expects (kube-prometheus-stack defaults to `release: <helm-release-name>`), or install the chart with `prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false` so all rules are picked up. If the group is loaded but empty, run the raw expression in the Prometheus UI and fix the selectors.
+**Why →** One fully traced critical journey proves value in a week; instrumenting everything shallowly proves nothing.
 
-**Prevent →** Keep a CI check that the rule group appears in `/api/v1/rules` after deploy, and standardize rule labels in a template.
+**Interview tip →** Say "W3C `traceparent` propagation end to end" — broken propagation is the number one reason traces look fragmented.
 
 </details>
 
-### Q102. `promtool check rules` fails with `could not parse expression: 1:72: parse error: unexpected right parenthesis ')'`. 🟢
+### Q102. The monthly observability bill doubled in two months and finance wants it cut by 40%. What do you do? 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Unbalanced parentheses or braces in a multi-line PromQL expression, often after editing a long burn-rate `and`/`or` expression, or YAML folding (`>`) joining lines in an unexpected way.
+**Situation read →** Telemetry cost grows with series count, log volume and retention, usually driven by a few noisy sources. Cut waste first, signal last.
 
-**Diagnose →**
-```bash
-promtool check rules slo-rules.yaml
-promtool query instant http://localhost:9090 '<paste the expression>'
-```
-The `1:72` is line:column inside the expression, not the YAML file.
+**What I'd do →**
+1. Find the top series by metric name:
+   ```promql
+   topk(20, count by (__name__) ({__name__=~".+"}))
+   ```
+   and per-job sample ingestion with `scrape_samples_scraped`.
+2. Find the top log producers by namespace and app (Loki: `sum by (namespace) (bytes_over_time({namespace=~".+"}[1h]))`).
+3. Drop unused metrics at scrape time with `metric_relabel_configs` (`action: drop`) — histograms with 30 buckets nobody queries are classic.
+4. Cut debug/info logs in production, sample repetitive success logs, keep all errors.
+5. Tier retention: 15 days hot, 13 months downsampled for SLO reporting.
+6. Use tail sampling for traces: keep 100% of errors and slow traces, 5% of the rest.
+7. Assign telemetry cost per team with a dashboard so the incentive sits with the owner.
 
-**Fix →** Use the literal block scalar `|` for multi-line expressions, align parentheses one level per line, and test the expression in the Prometheus UI first.
+**Why →** Most telemetry is never queried. Removing it costs nothing in reliability; removing SLO inputs costs a lot.
 
-**Prevent →** Run `promtool check rules` and `promtool test rules` in CI on every change; generate SLO rules with Sloth or Pyrra instead of hand-editing.
+**Interview tip →** Say "I never cut the SLI metrics or error logs — everything else is negotiable."
 
 </details>
 
-### Q103. The availability SLI panel shows `NaN` every night between 02:00 and 05:00. 🟢
+### Q103. A developer adds `customer_id` as a label to a request counter "for better debugging". You catch it in code review. What do you say? 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Zero traffic in the window: `0 / 0` is `NaN` in PromQL. Alerts comparing `NaN > threshold` are silently false.
+**Situation read →** Unbounded label values create one time series per customer per route per status code. With a million customers that is millions of series and a Prometheus OOM waiting to happen.
 
-**Diagnose →**
-```promql
-sum(rate(http_requests_total{job="checkout"}[5m]))
-```
-If it is 0 during those hours, the ratio is undefined.
+**What I'd do →**
+1. Explain the cardinality math: `routes x codes x methods x customers`.
+2. Keep metric labels bounded: route template, method, status class, region.
+3. Put `customer_id` in logs and as a span attribute on traces, where high cardinality is cheap.
+4. If per-customer SLOs are truly needed (enterprise tenants), use a bounded `tier` or `tenant` label for the top 50 accounts and "other" for the rest.
+5. Add a CI or scrape guard: `sample_limit` on the ServiceMonitor and a `promtool`/lint rule for forbidden labels.
 
-**Fix →** For dashboards, display "no traffic" by using longer windows or wrapping with `or vector(0)` only for the error side. For alerting, keep `NaN` (no traffic means no failed users) but add a traffic-drop alert and synthetic probes so a total outage at night is still detected.
+**Why →** Metrics answer "how much and how often"; logs and traces answer "which one". Mixing them breaks the metrics system.
 
-**Prevent →** Every SLO gets a companion traffic-drop or `absent()` alert, and synthetic checks for low-traffic periods.
+**Interview tip →** "Metrics for aggregates, traces and logs for identities" is a clean one-liner.
 
 </details>
 
-### Q104. Your per-route SLI query fails with `found duplicate series for the match group {route="/api/checkout"} on the right hand-side of the operation`. 🟡
+### Q104. You need to pick a trace sampling strategy for a service doing 20,000 requests per second. 🔴
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Division with one-to-one matching where the right side has several series per `route` (for example still split by `instance` or `code`) because it was not aggregated to the same labels as the left side.
+**Situation read →** Keeping 100% of traces at 20k RPS is expensive and mostly useless; but naive head sampling at 1% throws away the rare errors you actually want.
 
-**Diagnose →** Run each side alone and compare the label sets:
-```promql
-sum by (route) (rate(http_requests_total{job="checkout",code=~"5.."}[5m]))
-rate(http_requests_total{job="checkout"}[5m])
-```
+**What I'd do →**
+1. Use parent-based head sampling at the SDK (for example 10%) to cap overhead and keep traces complete across services.
+2. Add tail sampling in an OpenTelemetry Collector gateway that sees whole traces:
+   ```yaml
+   processors:
+     tail_sampling:
+       decision_wait: 10s
+       policies:
+         - name: errors
+           type: status_code
+           status_code: {status_codes: [ERROR]}
+         - name: slow
+           type: latency
+           latency: {threshold_ms: 1000}
+         - name: baseline
+           type: probabilistic
+           probabilistic: {sampling_percentage: 2}
+   ```
+3. Route spans by trace ID to the same collector instance with the `loadbalancing` exporter, otherwise tail sampling sees partial traces.
+4. Keep RED metrics generated from 100% of spans (spanmetrics connector) so sampling never affects SLO numbers.
+5. Monitor dropped spans and collector memory.
 
-**Fix →** Aggregate both sides to identical labels:
-```promql
-sum by (route) (rate(http_requests_total{job="checkout",code=~"5.."}[5m]))
-/
-sum by (route) (rate(http_requests_total{job="checkout"}[5m]))
-```
+**Why →** Head sampling controls cost; tail sampling controls *which* traces survive. Metrics derived before sampling keep aggregates accurate.
 
-**Prevent →** In recording rules always use explicit `sum by (...)` on numerator and denominator with the same label list.
+**Interview tip →** Mention the `loadbalancing` exporter — interviewers know tail sampling silently breaks without trace-ID affinity.
 
 </details>
 
-### Q105. Prometheus logs `vector contains metrics with the same labelset after applying rule labels` for your SLI recording rule. 🔴
+### Q105. Every team has built their own Grafana dashboards with different panels. During incidents, nobody can find anything. 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The rule's `labels:` block overwrites a label that distinguishes series in the result. For example, the expression returns one series per `code`, and the rule sets `code: "all"`, so all results collapse to the same labelset.
+**Situation read →** Dashboard sprawl slows diagnosis. Responders need a predictable path: service overview first, then drill down.
 
-**Diagnose →**
-```bash
-kubectl logs -n monitoring prometheus-monitoring-kube-prometheus-prometheus-0 -c prometheus | grep "same labelset"
-```
-Run the expression without the rule labels and inspect which labels vary.
+**What I'd do →**
+1. Define a standard service dashboard template: SLO status and budget, RED (rate, errors, duration), saturation (CPU, memory, throttling, pool usage), dependencies, recent deploys as annotations.
+2. Generate it from code (Grafonnet, Jsonnet or a Terraform Grafana provider) with the service name as a variable.
+3. Provision dashboards through Git and the Grafana sidecar, not the UI.
+4. Link alerts to the right dashboard via a `dashboard_url` annotation.
+5. Archive dashboards with no views in 90 days.
 
-**Fix →** Aggregate away the varying label in the expression (`sum without (code) (...)`) or choose a rule label name that does not clash.
+**Why →** Consistency means a responder who has never seen a service can still read its dashboard in 30 seconds.
 
-**Prevent →** Make SLI recording rules return exactly one series per SLO (or per explicit dimension) and unit test them with `promtool test rules`.
+**Interview tip →** "Every alert links to a runbook and a dashboard" shows operational maturity.
 
 </details>
 
-### Q106. Your latency SLI using `le="0.3"` returns an empty result, but the histogram exists. 🟡
+### Q106. A service's logs are unstructured strings like `Order 123 failed for user 9 after 3 retries`. Searching them during incidents is painful. 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** 0.3 seconds is not a bucket boundary. The histogram may only have `0.25` and `0.5` buckets, or the `le` value is formatted differently (`"0.30"`, or `"1.0"` vs `"1"` for whole numbers in some client libraries).
+**Situation read →** Free-text logs force regex searches and make aggregation impossible. Structured logs turn logs into queryable data.
 
-**Diagnose →**
-```promql
-count by (le) (http_request_duration_seconds_bucket{job="checkout"})
-```
+**What I'd do →**
+1. Agree a JSON log schema: `timestamp`, `level`, `service`, `trace_id`, `span_id`, `message`, plus event fields such as `order_id`, `retry_count`, `error_type`.
+2. Switch the logger to JSON output (Logback JSON encoder, `structlog`, `pino`, `zap`).
+3. Inject `trace_id` automatically from the OpenTelemetry context.
+4. Query by field instead of regex, for example in Loki:
+   ```logql
+   {app="orders"} | json | error_type="PaymentTimeout" | retry_count >= 3
+   ```
+5. Keep high-cardinality fields (order IDs) as log fields, not as Loki stream labels.
 
-**Fix →** Either add a 0.3 bucket in the instrumentation and redeploy, or align the SLO threshold with an existing bucket (for example 250 ms). Match the exact `le` string.
+**Why →** Structured logs make "how many orders failed with PaymentTimeout in the last 10 minutes" a one-line query.
 
-**Prevent →** Define histogram buckets together with SLO thresholds; document the bucket layout in the SLO document. Native histograms in recent Prometheus versions remove most of this pain.
+**Interview tip →** Mention that in Loki, labels must stay low-cardinality while JSON fields can be anything.
 
 </details>
 
-### Q107. The SLI ratio is above 1.0 (or the latency "good" ratio is 1.07). 🟡
+### Q107. Your Prometheus is a single instance holding everything. It is at 90% memory and the team wants 13 months of retention for SLO reports. 🔴
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Numerator and denominator select different series: the good-events query includes a job, route, or instance that the total does not, or they come from different metrics with different label filters.
+**Situation read →** A single Prometheus is a single point of failure, cannot scale memory forever, and is not built for year-long retention.
 
-**Diagnose →** Compare label selectors character by character, and check counts:
-```promql
-count(http_request_duration_seconds_bucket{le="0.3"})
-count(http_request_duration_seconds_count)
-```
+**What I'd do →**
+1. Shard scraping by function (platform vs apps) or use functional Prometheus instances per cluster, each with short local retention (`--storage.tsdb.retention.time=15d`).
+2. Run Prometheus in HA pairs with identical config and `external_labels` (`cluster`, `replica`).
+3. Ship blocks or remote-write to long-term storage: Thanos (sidecar + object storage), Grafana Mimir, or a managed service (Amazon Managed Service for Prometheus).
+4. Deduplicate HA replicas at query time (Thanos `--query.replica-label=replica`).
+5. Enable downsampling (5m and 1h resolutions) for long ranges; keep SLO reports on recording rules so they query few series.
+6. Reduce cardinality before scaling — it is the cheapest fix.
 
-**Fix →** Use identical selectors on both sides, and for latency use `_bucket{le=X}` and `_count` of the same histogram.
+**Why →** Local Prometheus is great for alerting with short retention; object storage is cheap for history. Separating the two scales both.
 
-**Prevent →** Generate rules from one SLO spec (Sloth/Pyrra) and add a `promtool` unit test asserting the ratio stays within 0 to 1.
+**Interview tip →** Keep alerting rules evaluated close to the data (local Prometheus) so alerts work even if long-term storage is down.
 
 </details>
 
-### Q108. Errors clearly appear in the logs, but the SLI shows zero 5xx for low-traffic routes. 🔴
+### Q108. An incident happened at 03:10, but logs from the affected pods are missing for 03:05–03:20. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Labeled counters are created lazily: the `code="500"` series appears only at the first error. `rate()` needs at least two samples, so the first increment of a new series is invisible, and on low-traffic routes most errors are "first errors" after each pod restart.
+**Situation read →** A gap during an incident is often caused by the incident itself: pods restarted, nodes died, or the log pipeline was overloaded at the exact moment volume spiked.
 
-**Diagnose →**
-```promql
-http_requests_total{job="checkout",code="500"}
-```
-Check whether the series appears only after errors and with value 1.
+**What I'd do →**
+1. Check whether the pods were restarted or evicted (container logs vanish with the container): `kubectl get events -n shop --sort-by=.lastTimestamp`.
+2. Check the log agent (Fluent Bit / Promtail / OTel Collector) for backpressure, retries, or `dropped` counters.
+3. Check the backend for ingestion limits (Loki `429 Too Many Requests` or rate-limit errors).
+4. Recover what exists: `kubectl logs --previous`, node journal, cloud load balancer access logs.
+5. Fix: filesystem buffering on the agent, larger burst limits for incident spikes, and alerts on agent drop counters.
 
-**Fix →** Pre-initialize expected label combinations at startup (for example `REQS.labels(route, "500")` in Python, or `.WithLabelValues(...)` in Go), so the series exists at 0 before any error.
+**Why →** Observability that fails during incidents is the worst kind; the pipeline needs headroom for 10x bursts.
 
-**Prevent →** Make counter initialization part of the instrumentation library and the service template.
+**Interview tip →** "Monitor the monitoring" — alert on log-agent drops and ingestion errors.
 
 </details>
 
-### Q109. A Grafana panel using `rate(http_requests_total[30d])` fails with `query processing would load too many samples into memory in query execution`. 🟡
+### Q109. You're asked to add synthetic monitoring for a public web app. What do you check and from where? 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** A raw 30-day range over many series exceeds Prometheus' `--query.max-samples` limit (default 50,000,000).
+**Situation read →** Synthetics catch outages when there is no real traffic (night, new regions) and test paths end to end from outside, including DNS, CDN and TLS.
 
-**Diagnose →** Count series behind the selector and estimate samples: series x (30d / scrape interval).
-```promql
-count(http_requests_total{job="checkout"})
-```
+**What I'd do →**
+1. Pick 3–5 critical journeys: homepage, login, search, add to cart, a read-only checkout step.
+2. Run probes from several regions outside our cloud (Grafana Synthetic Monitoring, Datadog Synthetics, CloudWatch Synthetics, or Blackbox Exporter in another provider).
+3. Simple HTTP checks every minute; scripted browser checks every 5–10 minutes.
+4. Check TLS expiry and DNS resolution along the way:
+   ```promql
+   probe_ssl_earliest_cert_expiry - time() < 86400 * 14
+   ```
+5. Alert only when probes fail from multiple locations, to avoid paging on one bad network path.
+6. Use dedicated test accounts and tag synthetic traffic so it can be excluded from business metrics.
 
-**Fix →** Pre-aggregate with recording rules (record 5m rates per SLO, then compute longer windows from those, in a slow-evaluated group), drop unneeded labels, or use a long-term store (Thanos, Mimir) with downsampling.
+**Why →** Synthetics are a reliable "is it up for users" signal independent of our own infrastructure.
 
-**Prevent →** Dashboards and alerts for SLOs read only recording rules, never raw high-cardinality metrics over long ranges.
+**Interview tip →** Mention multi-location quorum ("2 of 3 regions failing") to avoid false pages.
 
 </details>
 
-### Q110. `prometheus_rule_group_iterations_missed_total` keeps increasing for the SLO rule group. 🔴
+### Q110. Engineers keep asking "is it the network?" during every incident, and nobody can prove either way. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The group takes longer to evaluate than its interval, usually because long-window rules (`[1d]`, `[3d]`, `[30d]`) over raw metrics run every 30 seconds.
+**Situation read →** Without network-level telemetry, the network becomes the default suspect. We need data that confirms or rules it out quickly.
 
-**Diagnose →**
-```promql
-prometheus_rule_group_last_duration_seconds{rule_group=~".*slo.*"}
-prometheus_rule_group_interval_seconds{rule_group=~".*slo.*"}
-```
+**What I'd do →**
+1. Add client-side metrics on every outbound call: connect time, TLS time, time to first byte, errors by type (timeout, reset, refused).
+2. Enable network observability: Cilium Hubble or VPC Flow Logs, plus node metrics (`node_netstat_TcpExt_TCPRetransSegs`, conntrack usage, NIC drops).
+3. Deploy Blackbox Exporter probes between AZs and to key dependencies.
+4. Add a "network" row to the standard dashboard: retransmits, DNS latency (CoreDNS), packet drops.
+5. In incidents, compare server-side latency with client-side latency: if the server says 50 ms and the client says 2 s, the gap is in between.
 
-**Fix →** Split rules into groups by window: short windows (5m to 1h) at 30s, long windows (6h to 30d) in a separate group with `interval: 5m`. Build long windows from pre-recorded short-window sums where possible.
+**Why →** Comparing client and server views localizes delay within minutes and ends guesswork.
 
-**Prevent →** Alert on missed iterations and on group duration above 50% of interval.
+**Interview tip →** "Client-side minus server-side latency equals the network plus queueing" is a useful heuristic to state.
 
 </details>
 
-### Q111. Your new ServiceMonitor is applied, but the service never appears under Status → Targets. 🟢
+### Q111. Alerts are defined in Prometheus, Datadog, CloudWatch and Grafana, and on-call does not know where an alert came from. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** ServiceMonitor not selected by the Prometheus resource (labels or namespace selector), its `selector.matchLabels` does not match the Service labels, or `endpoints.port` refers to a port name the Service does not define.
+**Situation read →** Fragmented alert sources mean inconsistent routing, duplicate pages and alerts that bypass review.
 
-**Diagnose →**
-```bash
-kubectl get servicemonitor -n shop checkout -o yaml | yq '.spec'
-kubectl get svc -n shop checkout -o yaml | yq '.metadata.labels, .spec.ports'
-kubectl get prometheus -n monitoring -o jsonpath='{.items[0].spec.serviceMonitorSelector}'
-```
+**What I'd do →**
+1. Inventory every alert source and rule; record owner, severity and destination.
+2. Route all of them through one incident platform (PagerDuty, Opsgenie, Grafana OnCall) with consistent service mapping.
+3. Standardize alert labels: `service`, `team`, `severity`, `runbook_url`, and a `source` tag.
+4. Manage rules as code per tool (PrometheusRule, Terraform for CloudWatch and Datadog monitors).
+5. Consolidate over time: SLO burn alerts in one place, infrastructure alerts in another, nothing duplicated.
 
-**Fix →** Match labels exactly, use the named Service port (`port: http`), and add the release label or set `serviceMonitorSelectorNilUsesHelmValues=false`.
+**Why →** On-call needs one inbox with consistent context, regardless of which tool detected the problem.
 
-**Prevent →** Ship a ServiceMonitor in the service Helm chart template, tested in CI against a kind cluster.
+**Interview tip →** Saying "one pager, consistent labels, rules as code" covers most of what interviewers look for.
 
 </details>
 
-### Q112. The target shows DOWN with `server returned HTTP status 404 Not Found`. 🟢
+### Q112. A team wants to use logs to compute their SLO because they don't have metrics. Is that OK? 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Wrong metrics path (the app serves `/actuator/prometheus` or `/stats/prometheus`, not `/metrics`), wrong port (scraping the app port instead of a separate metrics port), or metrics disabled in this build.
+**Situation read →** Logs can be a valid SLI source, but they are usually slower, costlier, and lossy under pressure. It's a stepping stone, not the goal.
 
-**Diagnose →**
-```bash
-kubectl -n shop port-forward svc/checkout 8080:8080 &
-curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/metrics
-```
+**What I'd do →**
+1. Accept it short term if access logs are complete (load balancer or ingress logs are good sources).
+2. Derive metrics from logs instead of querying raw logs each time: Loki recording rules, CloudWatch metric filters, or an OTel `count` connector.
+   ```logql
+   sum(rate({app="billing"} | json | status >= 500 [5m]))
+   / sum(rate({app="billing"} | json [5m]))
+   ```
+3. Validate the log-derived SLI against a known incident to confirm it moves when users suffer.
+4. Plan native metrics (Prometheus client or OTel metrics) as the long-term source.
 
-**Fix →** Set `path:` and `port:` correctly in the ServiceMonitor endpoint.
+**Why →** Log pipelines drop data under load — exactly when the SLI matters. Metrics are cheaper and more reliable for SLOs.
 
-**Prevent →** Standardize the metrics path and port across services in the platform template.
+**Interview tip →** Point out that log sampling or drops would make the SLO look *better* during incidents.
 
 </details>
 
-### Q113. Scrapes fail intermittently with `context deadline exceeded`. 🟡
+### Q113. During an incident, a trace shows a 1.8 s gap with no spans between the API and the database call. What do you investigate? 🔴
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The `/metrics` endpoint takes longer than `scrapeTimeout` (default 10s): huge cardinality, expensive collectors, or a CPU-throttled pod.
+**Situation read →** A gap means time was spent in code or waiting on something not instrumented: a connection pool queue, a lock, GC, thread pool starvation, or DNS.
 
-**Diagnose →**
-```bash
-time curl -s localhost:8080/metrics | wc -l
-```
-```promql
-scrape_duration_seconds{job="checkout"}
-scrape_samples_scraped{job="checkout"}
-```
+**What I'd do →**
+1. Check connection pool metrics around the time (HikariCP `hikaricp_connections_pending`, `pool wait time`).
+2. Check GC pauses and CPU throttling on the pod (`container_cpu_cfs_throttled_periods_total`).
+3. Check thread pool/event loop metrics (executor queue depth, Node.js event loop lag).
+4. Use a continuous profiler (Pyroscope, Parca) for the same time window to see where CPU or wall time went.
+5. Add spans around pool acquisition and outbound DNS lookups so the gap becomes visible next time.
 
-**Fix →** Reduce cardinality (drop per-user or per-URL labels), raise CPU limits, or increase `scrapeTimeout` modestly (must stay below the interval).
+**Why →** Traces only show what is instrumented; gaps point at resource waiting inside the process.
 
-**Prevent →** Alert on `scrape_duration_seconds` approaching the timeout and on sample count growth.
+**Interview tip →** Mention continuous profiling as the fourth signal next to metrics, logs and traces.
 
 </details>
 
-### Q114. Prometheus got OOMKilled after a developer added a `user_id` label to `http_requests_total`. 🟡
+### Q114. Your Grafana and Prometheus run in the same cluster as the apps. The cluster had an outage and you were blind. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Cardinality explosion: one series per user x route x code x pod.
+**Situation read →** Monitoring that shares fate with what it monitors disappears exactly when needed.
 
-**Diagnose →**
-```promql
-topk(10, count by (__name__) ({__name__=~".+"}))
-count(count by (user_id) (http_requests_total))
-```
-Also check `prometheus_tsdb_head_series` before and after the deploy.
+**What I'd do →**
+1. Move alerting and long-term storage out of the workload cluster: a dedicated monitoring cluster or a managed service.
+2. Keep a lightweight local agent (Prometheus in agent mode or OTel Collector) that remote-writes out.
+3. Add an external dead man's switch so silence itself pages (healthchecks.io, PagerDuty heartbeat, Grafana OnCall heartbeat).
+4. Add external synthetic checks from outside the cloud provider.
+5. Make sure dashboards and runbooks are reachable when SSO or the cluster is down (break-glass access).
 
-**Fix →** Drop the label at scrape time while the code is fixed:
-```yaml
-metricRelabelings:
-  - action: labeldrop
-    regex: user_id
-```
-Then remove it from the instrumentation; per-user data belongs in logs or traces.
+**Why →** Monitoring needs independent failure domains to tell you about failures.
 
-**Prevent →** Set `sampleLimit` on ServiceMonitors, alert on head series growth, and review metric labels in code review.
+**Interview tip →** "Monitoring must not share fate with the system it watches."
 
 </details>
 
-### Q115. After migrating from ingress-nginx to Gateway API with Envoy, the SLO dashboard is blank and no burn alerts fire. 🟡
+### Q115. You want to correlate deploys with error spikes automatically. How do you set it up? 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The recording rules reference `nginx_ingress_controller_requests`, which no longer exists. Empty results mean `NaN`/no data, so alerts silently never fire.
+**Situation read →** "What changed?" is the first incident question. Changes should be visible on every graph without searching CI.
 
-**Diagnose →**
-```promql
-absent(nginx_ingress_controller_requests)
-count by (__name__) ({__name__=~"envoy_.*rq.*"})
-```
+**What I'd do →**
+1. Emit a deploy event from CI/CD or Argo CD to Grafana annotations:
+   ```bash
+   curl -s -X POST "$GRAFANA_URL/api/annotations" \
+     -H "Authorization: Bearer $GRAFANA_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"tags":["deploy","checkout"],"text":"checkout v2.14.1 by ci"}'
+   ```
+2. Also expose a `deploy_info{service,version}` metric or use `kube_deployment_status_observed_generation` changes.
+3. Add the version label to request metrics so errors can be split by version during rollouts.
+4. Include config changes and feature-flag changes in the same event stream.
+5. Show annotations on the standard service dashboard.
 
-**Fix →** Rewrite the SLI recording rules for the new metric names (for example Envoy's upstream request counters by response code class), validate against a week of overlap data, then switch.
+**Why →** Most incidents are caused by changes; visible changes cut diagnosis time dramatically.
 
-**Prevent →** Add `absent()` alerts on every metric an SLO depends on, so a renamed or missing metric pages as "SLO blind".
+**Interview tip →** Mention feature-flag flips as changes too — they are often missed.
 
 </details>
 
-### Q116. A 1m-window recording rule returns empty results intermittently. Scrape interval is 30s. 🟡
+### Q116. Your on-call engineers get alerts with only "HighErrorRate firing" and spend 10 minutes finding context. 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** `rate()` needs at least two samples in the window. With a 30s scrape interval and a 1m window, any missed or delayed scrape leaves only one sample.
+**Situation read →** Alerts lacking context waste the most expensive minutes of an incident.
 
-**Diagnose →**
-```promql
-count_over_time(http_requests_total{job="checkout"}[1m])
-```
+**What I'd do →**
+1. Add annotations to every alert:
+   ```yaml
+   annotations:
+     summary: "Checkout 5xx at {{ $value | humanizePercentage }} (SLO 99.9%)"
+     description: "Burning error budget 14x. Started {{ $labels.namespace }}/{{ $labels.service }}."
+     runbook_url: "https://runbooks.example.com/checkout/high-error-rate"
+     dashboard_url: "https://grafana.example.com/d/checkout"
+   ```
+2. Template Slack and PagerDuty messages to show summary, value, links.
+3. Include top labels (route, region) when available.
+4. Review alert quality in on-call handoffs.
 
-**Fix →** Use windows of at least 4x the scrape interval (2m for 30s scrapes); that is why the shortest SLO window is usually 5m. In Grafana use `$__rate_interval`.
+**Why →** Good annotations shorten time to mitigation and help newer engineers act confidently.
 
-**Prevent →** Lint recording rules for windows shorter than 4x scrape interval.
+**Interview tip →** Say the alert must answer "what is broken, how bad, where to look first".
 
 </details>
 
-### Q117. Joining SLI series with `kube_pod_labels` to add a `team` label fails with `many-to-many matching not allowed: matching labels must be unique on one side`. 🔴
+### Q117. Leadership wants "AI-powered anomaly detection" to replace your SLO alerts. How do you respond? 🔴
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Both sides have multiple series per matching key: `kube_pod_labels` can have duplicates (several kube-state-metrics replicas, or pods recreated with the same name), and the SLI side is not unique either.
+**Situation read →** Anomaly detection finds "unusual", not "bad for users". It is useful as a supplement but makes a poor sole paging signal.
 
-**Diagnose →**
-```promql
-count by (namespace, pod) (kube_pod_labels) > 1
-```
+**What I'd do →**
+1. Explain the difference: SLO burn alerts are tied to user impact and a budget; anomalies fire on harmless changes (traffic dips on holidays, new feature behaviour).
+2. Propose a pilot: run anomaly detection on business metrics (orders per minute, sign-ups) as tickets or Slack-only signals.
+3. Measure precision: how many anomaly alerts led to real action vs noise over 30 days.
+4. Keep SLO burn alerts as the paging source.
+5. Use anomaly detection where SLOs are weak: detecting silent failures like "orders dropped 40% but no errors".
 
-**Fix →** Make one side unique with aggregation and use `group_left`:
-```promql
-sum by (namespace, pod) (rate(http_requests_total[5m]))
-* on (namespace, pod) group_left(label_team)
-max by (namespace, pod, label_team) (kube_pod_labels)
-```
+**Why →** Paging must be precise and explainable; anomaly scores are hard to reason about at 3 AM.
 
-**Prevent →** Prefer static `team` labels via ServiceMonitor relabeling or `podTargetLabels` instead of runtime joins in SLO rules.
+**Interview tip →** Highlight business-metric anomalies as the best use case — they catch silent failures SLOs miss.
 
 </details>
 
-### Q118. In Thanos, the request counts used for error-budget events are exactly double what the app logs show. 🔴
+### Q118. A service returns HTTP 200 with an error message in the body for failures. Your availability SLI says 100%. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Two Prometheus HA replicas scrape the same targets, and the query runs without deduplication, so `sum()` counts each series twice. Ratios look right (both sides doubled), but absolute budget numbers are wrong.
+**Situation read →** Status-code SLIs cannot see failures hidden in 200 responses. The SLI is lying.
 
-**Diagnose →**
-```promql
-count by (prometheus_replica) (http_requests_total{job="checkout"})
-```
+**What I'd do →**
+1. Short term, add an app-level metric for business outcome: `orders_total{result="success|failure"}`.
+2. Change the SLI to use that outcome metric rather than HTTP code.
+3. Work with the team to return correct status codes (4xx for client errors, 5xx for server failures).
+4. Add a synthetic check that validates response content, not only status.
+5. Check for similar patterns elsewhere (GraphQL returns 200 with `errors` array by design — handle with a dedicated metric).
 
-**Fix →** Enable deduplication in Thanos Query with `--query.replica-label=prometheus_replica` (and the dedup toggle in Grafana's data source), or aggregate `max by` replica before summing.
+**Why →** An SLI must reflect user success; status codes are only a proxy.
 
-**Prevent →** Configure the replica label consistently and verify event counts against a second source when building SLO reports.
+**Interview tip →** Mention GraphQL explicitly — interviewers love that edge case.
 
 </details>
 
-### Q119. `promtool test rules` reports `FAILED: alertname: CheckoutErrorBudgetBurnFast, time: 10m, exp:[0: Labels:{alertname="CheckoutErrorBudgetBurnFast", severity="page"}], got:[]`. 🟡
+### Q119. Two teams use different definitions of "latency" for the same service — one at the ingress, one in the app — and their numbers disagree in reviews. 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** At `eval_time: 10m` the alert is not yet firing: the input series do not have enough history for the `[1h]` window to exceed the threshold, the `for:` duration has not elapsed, or the expected labels miss labels the rule adds (like `slo`).
+**Situation read →** Both are right about different things. The disagreement is a missing SLI specification.
 
-**Diagnose →** Evaluate the recording rules at that time in the test with `promql_expr_test`, and print what the alert produces at later times.
+**What I'd do →**
+1. Write the SLI spec in the SLO doc: "latency measured at the ingress controller from request received to last byte sent".
+2. Keep the app latency as a diagnostic metric, not an SLO.
+3. Explain the gap (queueing, TLS, network) and graph both on the same panel.
+4. Name recording rules clearly: `slo:ingress_latency_good:ratio_rate5m` vs `app:handler_duration_seconds:p99`.
 
-**Fix →** Move `eval_time` later (after the long window is above threshold plus `for:`), increase the error ratio in `input_series`, and list every label in `exp_labels`, including ones from recording rules.
+**Why →** A single agreed measurement point removes recurring arguments.
 
-**Prevent →** Keep a positive and a negative test case per alert tier, and document expected detection time in the test.
+**Interview tip →** "Specification vs implementation" — define what you measure, then where.
 
 </details>
 
-### Q120. Prometheus refuses to load the rules file: `invalid recording rule name: slo-checkout-error-ratio-5m`. 🟢
+### Q120. Your Kubernetes cluster has kube-state-metrics, node-exporter and cAdvisor, but no app-level metrics. The CTO asks if you can do SLOs. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Recording rule names must be valid metric names: letters, digits, underscores and colons only. Hyphens are not allowed.
+**Situation read →** Infrastructure metrics show resource state, not user experience. But the ingress or service mesh already sees every request.
 
-**Diagnose →**
-```bash
-promtool check rules slo-rules.yaml
-```
+**What I'd do →**
+1. Use ingress controller metrics (`nginx_ingress_controller_requests`, `nginx_ingress_controller_request_duration_seconds_bucket`) or Envoy/Istio metrics (`istio_requests_total`) as the first SLI source.
+2. Or use cloud load balancer metrics (ALB `HTTPCode_Target_5XX_Count`, `TargetResponseTime`).
+3. Build availability and latency SLOs on those today.
+4. Add app metrics later for journeys that need business outcomes.
 
-**Fix →** Rename following the `level:metric:operations` convention: `slo:sli_error:ratio_rate5m`.
+**Why →** Edge metrics are often the best SLI source anyway: they see the user's request.
 
-**Prevent →** Lint in CI with `promtool check rules`, and document the naming convention.
+**Interview tip →** "Start with what the ingress already measures" shows pragmatism.
 
 </details>
 
----
+### Q121. An alert fires on `up == 0` for a target that's scraped through a service. Pods are healthy. You keep getting woken up. 🟢
 
-## Burn-Rate Alerts & Alertmanager
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q121. The burn-rate alert sits in `Pending` for the whole incident and never reaches `Firing`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The `for:` duration is longer than the condition stays true continuously. If the short-window ratio dips below threshold for even one evaluation, the pending timer resets. A long `for:` (15m) on a 5m short window makes this likely during spiky errors.
-
-**Diagnose →**
-```promql
-ALERTS{alertname="CheckoutErrorBudgetBurnFast"}
-slo:sli_error:ratio_rate5m{slo="checkout-availability"}
-```
-Graph the short-window ratio against the threshold.
-
-**Fix →** Use `for: 2m` (or less) on paging burn alerts; the long window already provides the noise filtering. Optionally use `keep_firing_for` (Prometheus 2.42+) to avoid flapping once firing.
-
-**Prevent →** Unit test alerts with spiky input series in `promtool test rules`.
-
-</details>
-
-### Q122. After a rollback fixed the incident, the page kept firing for another 50 minutes. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The alert uses only the 1h window. The 1h ratio stays above threshold long after recovery because it still contains the bad minutes.
-
-**Diagnose →** Read the alert expression: if there is no short-window `and` condition, this is expected behaviour.
-
-**Fix →** Add the short window (1/12 of the long one):
-```promql
-slo:sli_error:ratio_rate1h > 14.4 * 0.001
-and
-slo:sli_error:ratio_rate5m > 14.4 * 0.001
-```
-
-**Prevent →** Use the full multi-window, multi-burn-rate pattern, ideally generated by Sloth or Pyrra.
-
-</details>
-
-### Q123. Checkout was completely down for 25 minutes and no burn-rate alert fired. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Requests never reached the service, so app metrics recorded zero traffic and the ratio was `NaN` (pods crashlooping, ingress misrouted, DNS broken). Or the failures were load balancer 502/503s that the app SLI does not see.
-
-**Diagnose →**
-```promql
-sum(rate(http_requests_total{job="checkout"}[5m]))
-sum by (status) (rate(nginx_ingress_controller_requests{service="checkout"}[5m]))
-up{job="checkout"}
-```
-
-**Fix →** Measure the SLI at the ingress or load balancer, add a traffic-drop alert, `absent(up{job="checkout"} == 1)`, and external synthetic probes.
-
-**Prevent →** For every SLO, review "what failure would make this SLI go blind?" and cover each case.
-
-</details>
-
-### Q124. The alert shows `Firing` in Prometheus, but Alertmanager's UI shows nothing. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Prometheus is not configured to send to this Alertmanager (wrong `alerting.alertmanagers` config or service discovery), network policy blocks it, or Alertmanager is down.
-
-**Diagnose →**
-```bash
-curl -s localhost:9090/api/v1/alertmanagers | jq '.data.activeAlertmanagers'
-```
-```promql
-rate(prometheus_notifications_errors_total[5m])
-prometheus_notifications_dropped_total
-```
-
-**Fix →** Fix the Alertmanager endpoints in the Prometheus config (in the operator: `spec.alerting.alertmanagers`), and allow traffic on port 9093.
-
-**Prevent →** Alert on `prometheus_notifications_errors_total` and use a Watchdog heartbeat to an external dead man's switch.
-
-</details>
-
-### Q125. Alertmanager won't load the new config: `undefined receiver "pager" used in route`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** A route references a receiver name that is not defined in `receivers:` (typo or the receiver block was removed).
-
-**Diagnose →**
-```bash
-amtool check-config alertmanager.yaml
-kubectl logs -n monitoring alertmanager-monitoring-kube-prometheus-alertmanager-0 -c alertmanager | tail
-```
-
-**Fix →** Add the receiver or fix the name:
-```yaml
-receivers:
-  - name: "null"
-  - name: "pager"
-```
-
-**Prevent →** Run `amtool check-config` in CI before deploying Alertmanager config.
-
-</details>
-
-### Q126. Alertmanager logs `Notify for alerts failed` with `unexpected status code 404: no_service` for the Slack receiver. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The Slack incoming webhook URL was revoked or the app was removed from the workspace.
-
-**Diagnose →**
-```bash
-kubectl logs -n monitoring alertmanager-monitoring-kube-prometheus-alertmanager-0 -c alertmanager | grep -i slack
-curl -s -X POST -H 'Content-type: application/json' --data '{"text":"test"}' "$SLACK_WEBHOOK_URL"
-```
-```promql
-rate(alertmanager_notifications_failed_total{integration="slack"}[5m])
-```
-
-**Fix →** Create a new webhook, store it in a Secret, and reference it with `api_url_file` or the operator's `AlertmanagerConfig` secret reference.
-
-**Prevent →** Alert on `alertmanager_notifications_failed_total` through a different channel than the one being monitored.
-
-</details>
-
-### Q127. The same burn-rate incident re-pages the on-call every 5 minutes. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** `repeat_interval` too short, or the alert's labels change (for example `{{ $value }}` placed in labels instead of annotations), creating a "new" alert each evaluation. Two tier alerts with different names but no grouping also produce separate pages.
-
-**Diagnose →**
-```bash
-amtool --alertmanager.url=http://localhost:9093 alert query alertname=~"Checkout.*" -o extended
-```
-Check whether label values change between notifications.
-
-**Fix →** Keep dynamic values in annotations only, group by `[alertname, slo]` or just `[slo]`, set `group_interval: 5m` and `repeat_interval: 4h` for pages.
-
-**Prevent →** Lint rules to forbid template expressions in labels.
-
-</details>
-
-### Q128. A burn-rate alert flaps between firing and resolved several times per hour during a partial outage. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The error ratio hovers right around the threshold, so the short-window condition toggles. Each resolve-then-fire sends new notifications.
-
-**Diagnose →** Graph both window ratios with the threshold line during the incident.
-
-**Fix →** Add `keep_firing_for: 10m` to the rule (Prometheus 2.42+), which keeps the alert firing for a period after the condition clears. Make sure Alertmanager `group_interval` absorbs short resolve/fire cycles.
-
-**Prevent →** Include hovering-around-threshold input series in `promtool` tests.
-
-</details>
-
-### Q129. You created a silence for a maintenance window, but the alert still pages. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Matchers do not match the alert's actual labels (typo, wrong label name, exact match where a regex was needed), the silence expired, or it was created on one Alertmanager that is not clustered with the one sending.
-
-**Diagnose →**
-```bash
-amtool --alertmanager.url=http://localhost:9093 silence query
-amtool --alertmanager.url=http://localhost:9093 alert query --silenced
-```
-Compare the silence matchers with the alert labels.
-
-**Fix →** Recreate with correct matchers, for example `amtool silence add 'alertname=~"Checkout.*"' namespace=shop --duration=2h --comment="maintenance"`.
-
-**Prevent →** Ensure Alertmanager replicas are clustered and use maintenance tooling that creates silences via the API with tested matchers.
-
-</details>
-
-### Q130. An inhibition rule should mute service alerts when the database is down, but both alerts arrive. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The `equal` labels are not present (or differ) on both the source and target alert. If `equal: [cluster]` is set and the service alerts lack a `cluster` label, inhibition never applies. Matchers may also not match.
-
-**Diagnose →**
-```bash
-amtool --alertmanager.url=http://localhost:9093 alert query -o extended
-```
-Compare labels on `PostgresDown` and the service alert.
-
-**Fix →** Ensure both have the `equal` labels (add `external_labels: {cluster: prod}` in Prometheus, or relabel), and verify the matchers.
-
-**Prevent →** Test inhibition with synthetic alerts posted to Alertmanager's API in staging.
-
-</details>
-
-### Q131. Every alert is delivered twice to PagerDuty from your 3-replica Alertmanager. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The replicas are not clustered (gossip not working), so each sends independently; or Prometheus sends to a load-balanced Service instead of all instances, which is fine only when clustering works.
-
-**Diagnose →**
-```promql
-alertmanager_cluster_members
-alertmanager_cluster_failed_peers
-```
-Each replica should report 3 members.
-
-**Fix →** Fix `--cluster.peer` settings and open port 9094 TCP/UDP between replicas (network policies). With the Prometheus Operator, ensure the Alertmanager pods can reach each other's mesh port.
-
-**Prevent →** Alert when `alertmanager_cluster_members` is lower than the replica count.
-
-</details>
-
-### Q132. Your external dead man's switch fires: no Watchdog heartbeat for 10 minutes. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Something in the alerting pipeline broke: Prometheus down or not evaluating rules, Alertmanager down, the route for `Watchdog` changed, or egress to the heartbeat service is blocked.
-
-**Diagnose →**
-```bash
-kubectl get pods -n monitoring
-curl -s localhost:9090/api/v1/alerts | jq '.data.alerts[] | select(.labels.alertname=="Watchdog")'
-amtool --alertmanager.url=http://localhost:9093 alert query alertname=Watchdog
-```
-
-**Fix →** Restore the failing component; until then, treat the cluster as unmonitored and watch dashboards manually or declare an incident.
-
-**Prevent →** Keep the Watchdog route at the top of the routing tree with `continue: false`, and monitor the monitoring stack from a separate system.
-
-</details>
-
-### Q133. The fast-burn alert expression `slo:sli_error:ratio_rate1h > X and slo:sli_error:ratio_rate5m > X` never returns results, even when both series exceed X. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** `and` matches on all labels. The 1h and 5m recording rules have different label sets (one has an extra `route` label or a different `slo` value), so no series pair matches.
-
-**Diagnose →** Query both series and compare full label sets.
-
-**Fix →** Make all window recording rules produce the same labels, or match explicitly:
-```promql
-slo:sli_error:ratio_rate1h > 0.0144 and on (slo) slo:sli_error:ratio_rate5m > 0.0144
-```
-
-**Prevent →** Generate all windows from one template so labels are identical; unit test the alert.
-
-</details>
-
-### Q134. Applying your `PrometheusRule` fails with `admission webhook "prometheusrulevalidate.monitoring.coreos.com" denied the request: Rules are not valid`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The Prometheus Operator's admission webhook found invalid PromQL or invalid rule fields (wrong indentation, `expr` missing, invalid duration like `for: 2min`).
-
-**Diagnose →**
-```bash
-yq '.spec' checkout-slo.yaml > /tmp/rules.yaml
-promtool check rules /tmp/rules.yaml
-```
-
-**Fix →** Fix the reported expression or field (durations use `2m`, not `2min`) and reapply.
-
-**Prevent →** Keep rules as plain Prometheus rule files tested with `promtool`, and wrap them into the CRD in CI.
-
-</details>
-
-### Q135. The 3-day ticket alert never fires, even during a slow multi-day burn. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Prometheus retention is shorter than the window (for example `--storage.tsdb.retention.time=2d`), so `[3d]` only sees 2 days of data, or a recent restart without persistent storage wiped history.
-
-**Diagnose →**
-```bash
-kubectl get prometheus -n monitoring -o jsonpath='{.items[0].spec.retention}'
-```
-```promql
-prometheus_tsdb_lowest_timestamp_seconds
-```
-
-**Fix →** Increase retention beyond the longest SLO window (at least 30d for the budget) with persistent volumes, or evaluate long-window rules in Thanos Ruler or Mimir ruler against long-term storage.
-
-**Prevent →** Document retention requirements in the SLO platform and alert if the lowest timestamp is newer than 30 days.
-
-</details>
-
-### Q136. The fast-burn page fired, yet the monthly SLO dashboard shows 99.96% against a 99.9% target. Is the alert wrong? 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Not wrong. Burn-rate alerts measure how fast the budget is being consumed right now, not whether the SLO is currently met. A 14.4x burn for an hour costs 2% of the monthly budget; left unchecked it would exhaust the budget in about 2 days.
-
-**Diagnose →** Check the 1h error ratio and budget remaining side by side.
-
-**Fix →** Nothing to fix in the alert; respond to the incident. Explain on the dashboard by showing burn rate next to budget remaining.
-
-**Prevent →** Train on-call on burn rate vs budget; include both on the SLO dashboard.
-
-</details>
-
-### Q137. `amtool config routes test severity=page team=payments` returns `default-receiver` instead of `payments-pager`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** An earlier sibling route matches first without `continue: true`, or the payments route sits under a parent route whose matchers do not match these labels, or matchers use the wrong label name.
-
-**Diagnose →**
-```bash
-amtool config routes show --config.file=alertmanager.yaml
-amtool config routes test --config.file=alertmanager.yaml --verify.receivers=payments-pager severity=page team=payments
-```
-
-**Fix →** Reorder routes so more specific ones come first, fix the matchers, or add `continue: true` where an alert should reach multiple receivers.
-
-**Prevent →** Add `amtool config routes test --verify.receivers` cases to CI for each team.
-
-</details>
-
----
-
-## Grafana SLO Dashboards
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q138. Your SLO dashboard ConfigMap is applied, but the dashboard never shows up in Grafana. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The ConfigMap is missing the label the Grafana sidecar watches (`grafana_dashboard: "1"` by default in kube-prometheus-stack), it is in a namespace the sidecar does not search, or the JSON is invalid.
-
-**Diagnose →**
-```bash
-kubectl get cm -A -l grafana_dashboard=1
-kubectl logs -n monitoring deploy/monitoring-grafana -c grafana-sc-dashboard | tail -20
-```
-
-**Fix →** Add the label, put the ConfigMap in the monitoring namespace (or set `grafana.sidecar.dashboards.searchNamespace: ALL`), and validate the JSON with `jq . dashboard.json`.
-
-**Prevent →** Provision dashboards from Git with a CI JSON lint step.
-
-</details>
-
-### Q139. An imported SLO dashboard shows `Datasource ${DS_PROMETHEUS} was not found` on every panel. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The JSON was exported with "Export for sharing externally", which replaces data source references with an input variable that is only resolved through the UI import flow, not through file provisioning.
-
-**Diagnose →** Search the JSON for `${DS_PROMETHEUS}` and check the `__inputs` block.
-
-**Fix →** Replace references with the real data source UID (`{"type":"prometheus","uid":"prometheus"}`) or define a `datasource` template variable and use `${datasource}`.
-
-**Prevent →** Export provisioned dashboards without the external-sharing option and use a data source variable.
-
-</details>
-
-### Q140. The "error budget remaining" stat changes when you change the dashboard time picker from 7 days to 30 days. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The query uses `$__range` or the panel's "reduce" over the selected range instead of a fixed SLO window. The budget must always be computed over the SLO window regardless of what range the viewer picks.
-
-**Diagnose →** Inspect the panel query and the stat panel's calculation setting.
-
-**Fix →** Query the fixed-window recording rule (`slo:sli_error:ratio_rate30d`) and set the stat to "Last" (not "Mean"). Optionally add a "relative time" override of `now-30d`.
-
-**Prevent →** Document which panels are window-bound and which follow the time picker.
-
-</details>
-
-### Q141. You just created the SLO recording rules and the 30-day budget panel shows only a few hours of data. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Prometheus evaluates recording rules only going forward; it does not backfill history for newly added rules.
-
-**Diagnose →** Check the earliest timestamp of the recorded series vs the raw metric.
-
-**Fix →** Backfill with promtool:
-```bash
-promtool tsdb create-blocks-from rules \
-  --start=$(date -d '-30 days' +%s) --end=$(date +%s) \
-  --url=http://localhost:9090 slo-rules.yaml
-```
-Then copy the generated blocks into Prometheus' data directory. Alternatively, wait for the window to fill, and label the panel accordingly.
-
-**Prevent →** Add SLO rules early in a service's life, or include backfill in the rollout procedure.
-
-</details>
-
-### Q142. The budget remaining panel shows `9,850%` instead of `98.5%`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Unit mismatch. The query already multiplies by 100 (returns `98.5`), but the panel unit is "Percent (0.0-1.0)", which multiplies by 100 again. The reverse mistake (ratio `0.985` with unit "Percent (0-100)") shows `0.985%`.
-
-**Diagnose →** Run the query in Explore and check the raw value.
-
-**Fix →** If the value is 0.985, use unit "Percent (0.0-1.0)" (`percentunit`). If you multiply by 100 in the query, use "Percent (0-100)".
-
-**Prevent →** Keep ratios as 0 to 1 in recording rules and format in Grafana with `percentunit`.
-
-</details>
-
-### Q143. SLO panels time out with `504 Gateway Timeout` when viewing 30 days. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Panels run raw `rate()` queries over many series and a long range with a small step, which is slow; a proxy (Grafana or ingress) times out first.
-
-**Diagnose →** Use Query inspector to see query time, and check Prometheus query logs or `prometheus_engine_query_duration_seconds`.
-
-**Fix →** Switch panels to recording rules, set a sensible `Min interval` (for example 5m for 30d views), and avoid regex selectors on high-cardinality labels.
-
-**Prevent →** Review dashboards for raw-metric queries; SLO dashboards should read only `slo:*` series.
-
-</details>
-
-### Q144. Deploy annotations stopped appearing on the SLO dashboard after the CI system was migrated. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The new pipeline no longer posts to Grafana's annotation API, the service account token expired, or the dashboard's annotation query filters on a tag the new pipeline does not set.
-
-**Diagnose →**
-```bash
-curl -s -H "Authorization: Bearer $GRAFANA_TOKEN" "$GRAFANA_URL/api/annotations?tags=deploy&limit=5" | jq .
-```
-
-**Fix →** Add a pipeline step:
-```bash
-curl -s -X POST -H "Authorization: Bearer $GRAFANA_TOKEN" -H "Content-Type: application/json" \
-  "$GRAFANA_URL/api/annotations" \
-  -d '{"tags":["deploy","checkout"],"text":"checkout 2.14.0 deployed"}'
-```
-
-**Prevent →** Treat deploy annotations as part of the deployment contract and test them in the pipeline.
-
-</details>
-
-### Q145. The SLO dashboard's 1h burn-rate panel shows 9x, but the alert evaluated 15x at the same moment. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The panel computes `rate()` itself with `$__rate_interval` or a different window and step, while the alert uses the recorded 1h ratio. Panel step alignment and min interval also change what is displayed.
-
-**Diagnose →** Compare the panel query with the recording rule expression, and query the recorded series directly in Explore.
-
-**Fix →** Make the panel query the same recorded series the alert uses (`slo:sli_error:ratio_rate1h / 0.001`).
-
-**Prevent →** Single source of truth: dashboards and alerts both read recording rules.
-
-</details>
-
-### Q146. After a Helm upgrade of kube-prometheus-stack, all SLO dashboards created in the Grafana UI are gone. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Grafana ran without persistence; UI-created dashboards were stored in SQLite inside an ephemeral pod, lost when the pod was recreated.
-
-**Diagnose →**
-```bash
-helm get values monitoring -n monitoring | grep -A3 persistence
-```
-
-**Fix →** Recreate from any exported JSON, then provision dashboards as code via ConfigMaps (sidecar) or the Grafana Terraform provider. Enable persistence or an external database for Grafana state.
-
-**Prevent →** Dashboards as code in Git; the UI is for exploration, not the source of truth.
-
-</details>
-
----
-
-## k6 Load Testing
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q147. k6 prints `WARN[0030] Insufficient VUs, reached 100 active VUs and cannot initialize more  executor=constant-arrival-rate scenario=steady`. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** With an arrival-rate executor, each in-flight request needs a VU. If the system slows down, more VUs are needed (Little's Law: rate x latency). When `maxVUs` is reached, k6 cannot start iterations on schedule and the target rate is not achieved, which hides how bad the slowdown is.
-
-**Diagnose →** Check `dropped_iterations` in the summary, and compute required VUs: `rate x p99 latency (s)`. At 200 RPS and 2 s latency that is 400 VUs.
-
-**Fix →** Raise `maxVUs` (and `preAllocatedVUs` to avoid allocation cost mid-test), or treat the warning as the test result: the system cannot sustain the rate within acceptable latency.
-
-**Prevent →** Add a threshold on `dropped_iterations` (for example `'dropped_iterations': ['count<1']`) so the test fails visibly.
-
-</details>
-
-### Q148. CI fails with `ERRO[0602] thresholds on metrics 'http_req_duration' have been crossed` and exit code 99. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The release candidate is slower than the latency threshold, or the test environment was degraded (noisy neighbour, cold caches, undersized staging), or the load generator itself was saturated.
-
-**Diagnose →** Read the end-of-test summary (`p(95)`, `p(99)`, `http_req_waiting` vs `http_req_connecting`), compare with the previous successful run, and check server-side latency and CPU throttling during the test window.
-
-**Fix →** If server-side latency regressed, block the release and profile the change. If the environment was at fault, fix it and re-run, rather than loosening the threshold.
-
-**Prevent →** Trend k6 results per build (JSON output or Prometheus remote write) and keep test environments sized consistently.
-
-</details>
-
-### Q149. Every request fails with `dial tcp: lookup checkout on 10.96.0.10:53: no such host`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The hostname does not resolve from where k6 runs: running locally against an in-cluster Service name, wrong namespace (needs `checkout.shop.svc.cluster.local` from another namespace), or the Service does not exist.
-
-**Diagnose →**
-```bash
-kubectl get svc -n shop checkout
-kubectl run dns-test --rm -it --image=busybox:1.36 --restart=Never -- nslookup checkout.shop.svc.cluster.local
-```
-
-**Fix →** Use the fully qualified Service name when running in-cluster, or port-forward / use an ingress URL when running outside.
-
-**Prevent →** Pass `BASE_URL` via `-e` and validate it with a smoke test stage before the main scenario.
-
-</details>
-
-### Q150. Many requests fail with `request timeout` after exactly 60 seconds. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** k6's default per-request timeout is 60s. The service is hanging (thread pool exhausted, waiting on a dependency without timeouts), so requests never complete.
-
-**Diagnose →** Check server-side: active connections, thread pools, DB pool waits, downstream latency. Check if the ingress has a longer timeout than k6.
-
-**Fix →** Fix the hang on the server (timeouts on dependencies, bulkheads). In the test, set a realistic timeout matching real clients: `http.get(url, { timeout: '10s' })`.
-
-**Prevent →** Every dependency call in the service has an explicit timeout; test with slow dependencies using chaos.
-
-</details>
-
-### Q151. The test starts fine, then errors switch to `dial tcp 10.96.41.12:8080: connect: connection refused`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Pods crashed or restarted under load (OOMKilled, liveness probe failures), leaving no ready endpoints, or the Service points to a port nobody listens on after a restart.
-
-**Diagnose →**
-```bash
-kubectl get pods -n shop -w
-kubectl describe pod -n shop -l app=checkout | grep -A5 "Last State"
-kubectl get endpointslices -n shop -l kubernetes.io/service-name=checkout
-```
-
-**Fix →** Fix the crash cause: memory limits, liveness probe too aggressive under load (use a cheap endpoint, longer timeouts), or startup time.
-
-**Prevent →** Load tests should also assert pod restarts are zero; liveness probes should never depend on downstream services.
-
-</details>
-
-### Q152. The k6 load generator logs `socket: too many open files`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The file descriptor limit on the load generator is too low for the number of concurrent connections.
-
-**Diagnose →**
-```bash
-ulimit -n
-cat /proc/$(pgrep k6)/limits | grep "open files"
-```
-
-**Fix →** Raise the limit: `ulimit -n 250000` before running, or set `LimitNOFILE` in systemd or the container runtime. Reuse connections (k6 does keep-alive by default; avoid `noConnectionReuse: true` unless intended).
-
-**Prevent →** Use a tuned load-generator image or the k6 Operator with known limits, and document OS tuning for large tests.
-
-</details>
-
-### Q153. At high rates, k6 errors with `dial tcp 10.0.3.15:443: connect: cannot assign requested address`. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Ephemeral port exhaustion on the load generator: too many new connections to one destination IP:port, with old sockets stuck in `TIME_WAIT`. Often caused by `noConnectionReuse` or `noVUConnectionReuse`, or the server closing connections after each request.
-
-**Diagnose →**
-```bash
-ss -tan state time-wait | wc -l
-sysctl net.ipv4.ip_local_port_range
-```
-
-**Fix →** Enable connection reuse, widen the port range (`sysctl -w net.ipv4.ip_local_port_range="1024 65000"`), and spread load across multiple generators or target IPs.
-
-**Prevent →** Run large tests distributed with the k6 Operator and check the generator's network metrics as part of the test.
-
-</details>
-
-### Q154. Latency results look terrible, but the server's histograms show p99 of 80 ms. Load generator CPU is at 100%. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The load generator is the bottleneck: k6 cannot process responses fast enough, so measured times include client-side scheduling delay.
-
-**Diagnose →** Watch generator CPU and memory during the test (`top`, node metrics); compare `http_req_waiting` against server-side latency.
-
-**Fix →** Give the generator more CPU, simplify the script (avoid heavy JSON parsing or large `check` functions per response, use `discardResponseBodies: true` when bodies are not needed), or distribute the test.
-
-**Prevent →** Keep generator CPU below roughly 80% during tests and record it alongside results.
-
-</details>
-
-### Q155. k6 warns: `The test has generated metrics with 100001 unique time series, which is higher than the suggested limit of 100000 and could cause high memory usage`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** URLs with unique IDs (`/orders/8f2c...`) become the `name` and `url` tags, so each request creates new metric series.
-
-**Diagnose →** Look for dynamic values in URLs and custom tags in the script.
-
-**Fix →** Group URLs with a static name tag:
-```javascript
-http.get(`${BASE}/orders/${id}`, { tags: { name: 'GET /orders/:id' } });
-```
-or use `http.url` template literals, which set the name tag automatically.
-
-**Prevent →** Review scripts for high-cardinality tags, same as Prometheus label hygiene.
-
-</details>
-
-### Q156. Streaming k6 results to Prometheus fails with `remote write receiver needs to be enabled with --web.enable-remote-write-receiver`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Prometheus does not accept remote write by default; the `/api/v1/write` endpoint returns 404 with that message.
-
-**Diagnose →**
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:9090/api/v1/write
-```
-
-**Fix →** Enable the receiver. In kube-prometheus-stack: `prometheus.prometheusSpec.enableRemoteWriteReceiver: true`. Then run:
-```bash
-K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write k6 run -o experimental-prometheus-rw test.js
-```
-
-**Prevent →** Document the integration in the platform's load-testing guide and enable it in the shared test Prometheus.
-
-</details>
-
-### Q157. The script fails at init with `ReferenceError: BASE_URL is not defined`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Environment variables are not globals in k6; they are read from `__ENV`.
-
-**Diagnose →** Search the script for bare `BASE_URL`.
-
-**Fix →**
-```javascript
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-```
-and run with `k6 run -e BASE_URL=http://checkout.shop:8080 test.js`.
-
-**Prevent →** Validate required env vars at the start of `setup()` and fail fast with a clear message.
-
-</details>
-
-### Q158. 20% of checks failed, but k6 still exited with code 0 and CI passed. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** `check()` only records results; it does not fail the test. Only thresholds affect the exit code.
-
-**Diagnose →** Look at the summary: `checks.........: 80.00%` with no threshold listed.
-
-**Fix →** Add a threshold on checks:
-```javascript
-thresholds: { checks: ['rate>0.99'] }
-```
-
-**Prevent →** Template scripts with SLO thresholds on `http_req_failed`, `http_req_duration` and `checks`.
-
-</details>
-
-### Q159. The k6 Kubernetes Job fails with `The moduleSpecifier "/scripts/test.js" couldn't be found on local disk`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The ConfigMap with the script is not mounted, mounted at a different path, or the key name differs from `test.js`.
-
-**Diagnose →**
-```bash
-kubectl get cm -n loadtest k6-script -o yaml | head -20
-kubectl get job -n loadtest k6-run -o yaml | yq '.spec.template.spec.volumes, .spec.template.spec.containers[0].volumeMounts'
-```
-
-**Fix →** Create the ConfigMap with the expected key (`kubectl create configmap k6-script --from-file=test.js`) and mount it at `/scripts`.
-
-**Prevent →** Use the k6 Operator `TestRun` resource, which handles script ConfigMaps consistently.
-
-</details>
-
-### Q160. With `constant-vus`, the test reports p99 of 400 ms, but production users see multi-second latency at the same RPS. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Coordinated omission: in a closed model, each VU waits for its response before sending the next, so when the server slows down, k6 sends fewer requests and never measures the queueing real users experience.
-
-**Diagnose →** Compare `http_reqs` rate during slow periods: it drops when latency rises.
-
-**Fix →** Use an open model (`constant-arrival-rate` or `ramping-arrival-rate`) with enough `maxVUs` so the request rate is independent of response time.
-
-**Prevent →** Make arrival-rate executors the default in the load-testing template for user-facing services.
-
-</details>
-
-### Q161. A Grafana k6 dashboard shows no data, although `experimental-prometheus-rw` output reports no errors. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Metric names differ from what the dashboard expects (k6 remote-write metrics are prefixed `k6_`, and trend metrics are exported as summaries or native histograms depending on `K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM` and `K6_PROMETHEUS_RW_TREND_STATS`), or the dashboard filters on a `testid` tag that was not set.
-
-**Diagnose →**
-```promql
-count by (__name__) ({__name__=~"k6_.*"})
-```
-
-**Fix →** Align the dashboard queries with the exported names, set the trend stats you need (for example `K6_PROMETHEUS_RW_TREND_STATS="p(95),p(99),avg"`), and tag runs with `--tag testid=release-2.14`.
-
-**Prevent →** Use the dashboard version that matches your k6 output settings and pin both.
-
-</details>
-
----
-
-## Chaos Mesh, Litmus & AWS FIS
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q162. A `NetworkChaos` delay experiment does nothing, and chaos-daemon logs show `RTNETLINK answers: No such file or directory` / `Specified qdisc kind is unknown`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The host kernel lacks the `sch_netem` module, which `tc` needs for delay and loss. Common on minimal VM images and some Docker Desktop or WSL kernels.
-
-**Diagnose →**
-```bash
-lsmod | grep sch_netem
-kubectl logs -n chaos-mesh ds/chaos-daemon --tail=50 | grep -i rtnetlink
-```
-
-**Fix →** On the node: `sudo modprobe sch_netem` (on kind, the node containers share the host kernel, so load it on the host). On cloud nodes, install the kernel extras package (for example `linux-modules-extra-$(uname -r)` on Ubuntu).
-
-**Prevent →** Add a pre-flight check to the chaos platform that verifies kernel modules on all nodes.
-
-</details>
-
-### Q163. Chaos experiments fail with `dial unix /var/run/docker.sock: connect: no such file or directory` on a containerd cluster. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Chaos Mesh was installed with the default Docker runtime settings, but the nodes run containerd (kind, EKS, GKE, most modern clusters).
-
-**Diagnose →**
-```bash
-kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'
-helm get values chaos-mesh -n chaos-mesh
-```
-
-**Fix →**
-```bash
-helm upgrade chaos-mesh chaos-mesh/chaos-mesh -n chaos-mesh --reuse-values \
-  --set chaosDaemon.runtime=containerd \
-  --set chaosDaemon.socketPath=/run/containerd/containerd.sock
-```
-(k3s uses `/run/k3s/containerd/containerd.sock`.)
-
-**Prevent →** Keep Chaos Mesh values per cluster type in Git.
-
-</details>
-
-### Q164. `kubectl apply -f podchaos.yaml` fails with `Internal error occurred: failed calling webhook ... context deadline exceeded`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The Chaos Mesh admission webhook (served by the controller manager) is unreachable: controller pods not ready, a NetworkPolicy blocks the API server, or on private clusters the control plane cannot reach the webhook port.
-
-**Diagnose →**
-```bash
-kubectl get pods -n chaos-mesh
-kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations | grep -i chaos
-kubectl logs -n chaos-mesh deploy/chaos-controller-manager --tail=50
-```
-
-**Fix →** Restore the controller manager, allow API server traffic to the webhook port, and on private GKE/EKS clusters open the firewall or security group rule for that port.
-
-**Prevent →** Monitor the chaos controller like any other platform component.
-
-</details>
-
-### Q165. A `PodChaos` resource is created, but no pod is killed. The status shows no records. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The selector matches no pods: wrong namespace, wrong label key or value, or namespace filtering is enabled and the namespace is not annotated.
-
-**Diagnose →**
-```bash
-kubectl describe podchaos checkout-pod-kill -n shop
-kubectl get pods -n shop -l app=checkout
-```
-
-**Fix →** Correct `selector.namespaces` and `labelSelectors`. If Chaos Mesh was installed with `controllerManager.enableFilterNamespace=true`, annotate the target namespace: `kubectl annotate ns shop chaos-mesh.org/inject=enabled`.
-
-**Prevent →** Dry-run selectors with `kubectl get pods -l ...` before every experiment and keep selectors in reviewed manifests.
-
-</details>
-
-### Q166. You deleted the `NetworkChaos`, but the 200 ms delay is still there and the resource is stuck in `Terminating`. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The controller could not recover the fault (chaos-daemon on that node restarted or the target pod's network namespace changed), so the finalizer is never removed and the `tc` rule may still exist.
-
-**Diagnose →**
-```bash
-kubectl get networkchaos -n shop inventory-latency -o yaml | yq '.metadata.finalizers, .status'
-kubectl logs -n chaos-mesh ds/chaos-daemon --tail=100 | grep -i recover
-```
-
-**Fix →** Restart the affected target pods (removes the qdisc with the network namespace), then, as a last resort, force-clean the finalizer:
-```bash
-kubectl annotate networkchaos inventory-latency -n shop chaos-mesh.chaos-mesh.org/cleanFinalizer=forced
-```
-
-**Prevent →** Always set `duration` on experiments and ensure chaos-daemon has PriorityClass and resources so it is not evicted mid-experiment.
-
-</details>
-
-### Q167. `NetworkChaos` added 300 ms delay to the checkout pods, but the checkout latency SLI did not move. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The SLI comes from the app's own histogram, which measures time inside the handler. Delay on the pod's egress packets happens after the handler finishes, so only clients see it.
-
-**Diagnose →** Compare k6 or ingress latency (client side) with the app histogram during the experiment.
-
-**Fix →** Measure the latency SLI at the ingress or load balancer, or inject the delay on a downstream dependency so the caller's handler waits for it.
-
-**Prevent →** Validate that every SLI reacts to a fault you inject; an SLI that does not move during a known fault is blind to that failure mode.
-
-</details>
-
-### Q168. A Litmus experiment pod never starts: `error looking up service account shop/pod-delete-sa: serviceaccount "pod-delete-sa" not found`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The `ChaosEngine` references `chaosServiceAccount: pod-delete-sa`, but the ServiceAccount and its RBAC were not created in the target namespace.
-
-**Diagnose →**
-```bash
-kubectl get sa -n shop
-kubectl get chaosengine -n shop -o yaml | grep chaosServiceAccount
-```
-
-**Fix →** Apply the experiment's RBAC manifest (ServiceAccount, Role, RoleBinding) in the namespace, or point the engine to an existing chaos ServiceAccount.
-
-**Prevent →** Template RBAC together with the `ChaosEngine` in the same manifest bundle.
-
-</details>
-
-### Q169. Litmus `pod-delete` fails: `pods is forbidden: User "system:serviceaccount:shop:pod-delete-sa" cannot delete resource "pods" in API group "" in the namespace "shop"`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The ServiceAccount exists, but its Role lacks the `delete` verb on pods (or the RoleBinding points to another namespace).
-
-**Diagnose →**
-```bash
-kubectl auth can-i delete pods -n shop --as=system:serviceaccount:shop:pod-delete-sa
-kubectl describe rolebinding -n shop | grep -A3 pod-delete
-```
-
-**Fix →** Grant the minimum needed verbs (`get`, `list`, `delete` on pods; `create` on events; access to `chaosengines` and `chaosresults`).
-
-**Prevent →** Use the RBAC manifests that ship with each ChaosHub experiment and test them in staging.
-
-</details>
-
-### Q170. The Litmus `ChaosResult` verdict is `Fail`, with the `promProbe` marked failed, but the app looked healthy. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The probe's query, comparator or criteria is wrong: comparing a ratio to a percentage (`0.999` vs `99.9`), wrong operator (`<=` vs `>=`), the query returning no data (counts as failure), or the Prometheus endpoint unreachable from the experiment pod.
-
-**Diagnose →**
-```bash
-kubectl describe chaosresult -n shop checkout-pod-delete
-```
-Run the probe's query manually against the same endpoint.
-
-**Fix →** Correct the query and comparator (for example `criteria: ">="`, `value: "0.995"` on a success ratio), use the in-cluster Prometheus Service URL, and set a reasonable `probeTimeout` and `interval`.
-
-**Prevent →** Test probes in a no-fault run first: the verdict must be Pass when nothing is injected.
-
-</details>
-
-### Q171. Litmus experiments stay `Awaited` forever in an air-gapped cluster. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The chaos-runner or experiment image cannot be pulled (`ImagePullBackOff`) because images come from a public registry.
-
-**Diagnose →**
-```bash
-kubectl get pods -n shop | grep -E "runner|pod-delete"
-kubectl describe pod -n shop <runner-pod> | grep -A5 Events
-```
-
-**Fix →** Mirror the Litmus images to your private registry and set the image references in the `ChaosEngine` / `ChaosExperiment` (and the image registry setting in ChaosCenter), plus an `imagePullSecret` if needed.
-
-**Prevent →** Include chaos tooling images in your standard image mirroring pipeline.
-
-</details>
-
-### Q172. An AWS FIS experiment fails immediately with a target resolution error saying the target set is empty. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** No resources match the target's tags, filters or ARNs in that region (tag key typo, instances in another region, filters like `State.Name` excluding everything).
-
-**Diagnose →**
-```bash
-aws fis get-experiment --id EXP123 --query 'experiment.state'
-aws ec2 describe-instances --filters "Name=tag:chaos-target,Values=checkout" \
-  --query 'Reservations[].Instances[].InstanceId'
-```
-
-**Fix →** Fix the tags or filters in the template and check the region.
-
-**Prevent →** Validate target selection with a describe call in the same automation that starts the experiment.
-
-</details>
-
-### Q173. FIS fails with `is not authorized to perform: ec2:TerminateInstances on resource: arn:aws:ec2:ap-south-1:123456789012:instance/i-0abc...`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The IAM role in the experiment template lacks permissions for the action, or an SCP or permission boundary denies it.
-
-**Diagnose →**
-```bash
-aws fis get-experiment-template --id EXT123 --query 'experimentTemplate.roleArn'
-aws iam simulate-principal-policy --policy-source-arn <role-arn> \
-  --action-names ec2:TerminateInstances
-```
-
-**Fix →** Attach the AWS managed policy for the relevant FIS action category (for example the EC2 access policy for FIS) or a scoped custom policy, conditioned on the chaos tag.
-
-**Prevent →** Keep FIS roles in IaC with least privilege scoped by tags, and test templates in a sandbox account.
-
-</details>
-
-### Q174. FIS `aws:eks:pod-delete` fails because FIS cannot create its pod in the cluster (`forbidden`). 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The FIS experiment role is not mapped into Kubernetes RBAC (no EKS access entry or `aws-auth` mapping), or the Kubernetes ServiceAccount named in the action lacks permissions in the target namespace.
-
-**Diagnose →**
-```bash
-aws eks list-access-entries --cluster-name prod
-kubectl auth can-i create pods -n shop --as=system:serviceaccount:shop:fis-experiment
-```
-
-**Fix →** Add an access entry (or `aws-auth` mapping) for the FIS role to a Kubernetes user or group, and create the ServiceAccount, Role and RoleBinding that the FIS pod actions require in the target namespace.
-
-**Prevent →** Provision FIS EKS integration with the cluster's IaC, and run a smoke experiment after cluster upgrades.
-
-</details>
-
-### Q175. A FIS experiment with a stop condition on the SLO alarm kept running while errors rose. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The CloudWatch alarm was in `INSUFFICIENT_DATA` (metric missing or delayed), its evaluation periods were too long to react within the experiment, or it watched the wrong metric or dimension.
-
-**Diagnose →**
-```bash
-aws cloudwatch describe-alarm-history --alarm-name checkout-slo-burn --max-items 10
-aws cloudwatch describe-alarms --alarm-names checkout-slo-burn \
-  --query 'MetricAlarms[].{state:StateValue,periods:EvaluationPeriods,period:Period}'
-```
-
-**Fix →** Use a 1-minute period with 1 to 3 datapoints, `TreatMissingData: breaching` for stop-condition alarms, and the correct dimensions. Verify the alarm fires by forcing it with `aws cloudwatch set-alarm-state` in a test.
-
-**Prevent →** Test stop conditions before every new experiment template.
-
-</details>
-
-### Q176. A Chaos Mesh `StressChaos` CPU experiment pegged the node and evicted unrelated pods. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Stress workers ran without effective limits relative to the target container, so the injected load competed with other pods on the node, or the target pods had no CPU limits and the node's allocatable was exceeded.
-
-**Diagnose →**
-```bash
-kubectl describe stresschaos -n shop checkout-cpu
-kubectl get events -A --field-selector reason=Evicted
-kubectl top node
-```
-
-**Fix →** Set `stressors.cpu.workers` and `load` conservatively, target containers with CPU limits, and use `mode: one` and short `duration`.
-
-**Prevent →** Run resource stress only on dedicated or well-limited workloads, and review blast radius in the experiment design.
-
-</details>
-
----
-
-## Reliability Patterns in Production
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q177. Clients get 503s with body `upstream connect error or disconnect/reset before headers. reset reason: overflow`, and Envoy logs show flag `UO`. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The Istio/Envoy circuit breaker tripped: the `DestinationRule` `connectionPool` limits (`maxConnections`, `http1MaxPendingRequests`, `http2MaxRequests`) are lower than the current concurrency. `UO` means upstream overflow.
-
-**Diagnose →**
-```bash
-kubectl get destinationrule -n shop inventory -o yaml
-kubectl exec -n shop deploy/checkout -c istio-proxy -- \
-  pilot-agent request GET stats | grep -E "upstream_rq_pending_overflow|upstream_cx_overflow"
-```
-
-**Fix →** If the limit is protecting a genuinely saturated service, it is working; fix capacity. If the limits were set too low, raise them based on Little's Law (RPS x latency) with headroom.
-
-**Prevent →** Size connection pool limits from load tests and alert on overflow counters.
-
-</details>
-
-### Q178. NGINX ingress returns 504 and logs `upstream timed out (110: Connection timed out) while reading response header from upstream`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The backend did not respond within `proxy-read-timeout` (default 60s): slow queries, a hung dependency, or a long-running endpoint that should be async.
-
-**Diagnose →**
-```bash
-kubectl logs -n ingress-nginx deploy/ingress-nginx-controller | grep "upstream timed out" | tail
-kubectl get ingress -n shop checkout -o yaml | grep -i timeout
-```
-Check the backend's latency and dependency traces for those requests.
-
-**Fix →** Fix the slow backend path (timeouts on its dependencies, indexes, async jobs). Only raise `nginx.ingress.kubernetes.io/proxy-read-timeout` for endpoints that legitimately take long.
-
-**Prevent →** Nest timeouts: backend dependency timeouts < backend request timeout < ingress timeout < client timeout.
-
-</details>
-
-### Q179. After a 30-second database blip, Postgres keeps rejecting connections with `FATAL: sorry, too many clients already` for 20 minutes. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** A retry storm and connection storm: every pod retried immediately, opened new connections to replace broken ones, and the pools' total maximum exceeds `max_connections`. The DB is now saturated by reconnect attempts (a metastable failure).
-
-**Diagnose →**
-```sql
-SELECT state, count(*) FROM pg_stat_activity GROUP BY state;
-SHOW max_connections;
-```
-Compare `pods x pool max` with `max_connections`.
-
-**Fix →** Shed load: scale callers down or disable retries via flag, terminate idle connections, then bring traffic back gradually. Longer term, put PgBouncer or RDS Proxy in front, cap pool sizes so their sum fits, and add backoff with jitter on reconnects.
-
-**Prevent →** Capacity check in reviews: `replicas x maxPoolSize` must fit `max_connections` at max HPA scale.
-
-</details>
-
-### Q180. Customers were charged twice during an incident where the payment API timed out. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The client retried a non-idempotent `POST` after a timeout, but the first request had actually succeeded on the server.
-
-**Diagnose →** Match duplicate charges by customer and timestamp in payment logs; check retry configuration in the client library or mesh (`VirtualService` `retries` with `retryOn: 5xx,reset`).
-
-**Fix →** Refund duplicates. Add idempotency keys: the client generates a key per logical payment, the server stores the result per key and returns it on duplicates. Remove automatic retries for non-idempotent calls at the mesh layer.
-
-**Prevent →** Idempotency keys mandatory for all write APIs; retry policies reviewed per route.
-
-</details>
-
-### Q181. Every rolling deploy produces a short burst of 502s on the AWS ALB. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Pods terminate before the ALB stops sending traffic: no `preStop` delay, app exits immediately on SIGTERM, or deregistration delay is longer than `terminationGracePeriodSeconds`. ALB access logs show `elb_status_code 502` with `target_status_code -`.
-
-**Diagnose →**
-```bash
-kubectl get deploy checkout -n shop -o yaml | yq '.spec.template.spec | {grace: .terminationGracePeriodSeconds, lifecycle: .containers[0].lifecycle}'
-kubectl get ingress -n shop checkout -o yaml | grep -i deregistration
-```
-
-**Fix →** Add `preStop: sleep 15`, handle SIGTERM gracefully, set `terminationGracePeriodSeconds` above preStop plus drain time, and align the target group `deregistration_delay.timeout_seconds`. With the AWS Load Balancer Controller, enable pod readiness gates.
-
-**Prevent →** Run a pod-kill chaos experiment under load after any change to deployment settings.
-
-</details>
-
-### Q182. Redis restarted and immediately the database CPU hit 100% and the site went down. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Cache stampede: all cache misses at once sent the full read load to the database, which was sized only for the cache-miss rate.
-
-**Diagnose →** Correlate cache hit ratio, DB QPS and DB CPU around the restart.
-
-**Fix →** Shed load at the edge, then warm the cache gradually. Add request coalescing (single-flight) so concurrent misses for the same key trigger one DB query, use stale-while-revalidate, and add jitter to TTLs.
-
-**Prevent →** Treat the cache as a hard dependency in capacity planning, or size the DB for cold-cache load; run a cache-flush chaos experiment.
-
-</details>
-
-### Q183. Logs fill with `CallNotPermittedException: CircuitBreaker 'inventory' is OPEN and does not permit further calls` long after inventory recovered. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The breaker cannot close: half-open trial calls keep failing (they time out because the timeout is too short for a cold dependency), `permittedNumberOfCallsInHalfOpenState` is tiny, or `waitDurationInOpenState` is very long.
-
-**Diagnose →** Check breaker state metrics (`resilience4j_circuitbreaker_state`) and the result of half-open calls; call inventory manually from the pod.
-
-**Fix →** Tune `waitDurationInOpenState` (for example 30s), allow several half-open calls, and make sure the call timeout is realistic for a recovering dependency.
-
-**Prevent →** Export breaker state as metrics, alert on breakers open longer than N minutes, and test recovery in chaos experiments.
-
-</details>
-
-### Q184. Your NGINX rate limit returns 503 to throttled clients, and the SLO counts them as errors. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** `limit_req` returns 503 by default, so intentional throttling looks like server failure in the SLI and to clients (who may retry aggressively).
-
-**Diagnose →**
-```bash
-grep -n "limit_req" /etc/nginx/nginx.conf
-```
-Correlate 503 spikes with `limiting requests` entries in the NGINX error log.
-
-**Fix →** Set `limit_req_status 429;` (ingress-nginx: `limit-req-status-code: "429"` in the ConfigMap). Decide explicitly whether 429s for fair-use throttling count against the SLO; overload-driven 429s usually should.
-
-**Prevent →** Document status codes for throttling and shedding, and include them in the SLI definition.
-
-</details>
-
-### Q185. The product page fails with `BulkheadFullException: Bulkhead 'recommendations' is full and does not permit further calls`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The bulkhead is working as designed (recommendations is slow and its concurrency slots are full), but the caller does not have a fallback, so the exception bubbles up and fails the whole page.
-
-**Diagnose →** Check recommendations latency and bulkhead metrics (`resilience4j_bulkhead_available_concurrent_calls`).
-
-**Fix →** Add a fallback (empty or cached recommendations) so the page renders without that section; fix the slowness in the recommendations service.
-
-**Prevent →** For every soft dependency, define and test the fallback, not just the isolation.
-
-</details>
-
-### Q186. gRPC clients see `rpc error: code = DeadlineExceeded desc = context deadline exceeded` even though the server logs show requests finishing in 200 ms. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The deadline is consumed before the request reaches this server: an upstream caller set a short overall deadline and earlier hops used most of it, or queueing (client-side connection limits, server max concurrent streams) delays the start. Server logs measure only processing time.
-
-**Diagnose →** Use distributed traces to see where time is spent across hops; check the `grpc-timeout` header received by the server and client-side queueing metrics.
-
-**Fix →** Rebalance deadlines along the chain, parallelize calls, remove queueing (raise `MaxConcurrentStreams`, add connections), and fail fast when remaining deadline is too small.
-
-**Prevent →** Define latency budgets per hop from the top-level SLO, and propagate deadlines everywhere.
-
-</details>
-
-### Q187. A node drain for maintenance hangs with `Cannot evict pod as it would violate the pod's disruption budget.` 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** A PodDisruptionBudget allows zero disruptions right now: `minAvailable` equals replica count, a single-replica deployment has `minAvailable: 1`, or some replicas are already unhealthy.
-
-**Diagnose →**
-```bash
-kubectl get pdb -A
-kubectl describe pdb -n shop checkout
-```
-Look at `ALLOWED DISRUPTIONS`.
-
-**Fix →** Scale up so the PDB permits one disruption, fix unhealthy pods, or adjust the PDB (`maxUnavailable: 1`). Do not force-delete pods unless you accept the impact.
-
-**Prevent →** At least 2 replicas for anything with a PDB, and use `maxUnavailable` rather than `minAvailable` equal to replicas.
-
-</details>
-
-### Q188. The HPA does not scale during a load test: `failed to get cpu utilization: unable to get metrics for resource cpu: unable to fetch metrics from resource metrics API: the server could not find the requested resource (get pods.metrics.k8s.io)`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** metrics-server is not installed or not healthy (on kind it often fails TLS to kubelets).
-
-**Diagnose →**
-```bash
-kubectl get apiservice v1beta1.metrics.k8s.io
-kubectl -n kube-system logs deploy/metrics-server | tail
-kubectl top pods -n shop
-```
-
-**Fix →** Install metrics-server; on kind add `--kubelet-insecure-tls` to its args (lab only). Also make sure pods have CPU requests, or the HPA cannot compute utilization.
-
-**Prevent →** Include metrics-server in the cluster baseline and alert if the APIService is unavailable.
-
-</details>
-
-### Q189. Under load, pods start failing readiness with `Readiness probe failed: Get "http://10.244.1.7:8080/healthz": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`, and the remaining pods collapse. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The probe endpoint competes with real traffic for the same threads, or checks downstream dependencies. Under load it times out (default `timeoutSeconds: 1`), pods are removed from endpoints, the remaining pods get more traffic and fail too: a cascading failure.
-
-**Diagnose →**
-```bash
-kubectl describe pod -n shop -l app=checkout | grep -B2 -A2 "Readiness probe failed"
-kubectl get endpointslices -n shop -l kubernetes.io/service-name=checkout -w
-```
-
-**Fix →** Make the readiness endpoint cheap and local (no dependency calls), raise `timeoutSeconds` and `failureThreshold`, and serve probes on a separate lightweight listener if possible. Add load shedding so overloaded pods reject excess work instead of becoming unready.
-
-**Prevent →** Load test with probe behaviour in mind, and never use dependency checks in liveness probes.
-
-</details>
-
-### Q190. p99 latency spikes every few seconds although CPU usage averages only 40% of the limit. 🟡
-
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** CFS throttling: the container bursts above its CPU limit within a 100 ms period and is paused for the rest of the period. Averages hide it, especially for multi-threaded runtimes (JVM, Go with high GOMAXPROCS).
+**Situation read →** `up` measures whether Prometheus can scrape, not whether users are affected. It is a cause-based alert paging humans.
 
-**Diagnose →**
-```promql
-rate(container_cpu_cfs_throttled_periods_total{namespace="shop",container="checkout"}[5m])
-/ rate(container_cpu_cfs_periods_total{namespace="shop",container="checkout"}[5m])
-```
+**What I'd do →**
+1. Downgrade `up == 0` alerts for single targets to ticket severity.
+2. Page only on symptom-based SLO burn alerts.
+3. Use `absent()` or aggregated up ratios for "whole job gone" cases:
+   ```promql
+   sum(up{job="checkout"}) / count(up{job="checkout"}) < 0.5
+   ```
+4. Fix the root cause of flapping scrapes (timeouts, scrape interval vs scrape timeout, network policies).
 
-**Fix →** Raise or remove CPU limits (keep requests), set GOMAXPROCS to match the limit (automaxprocs) or JVM `-XX:ActiveProcessorCount`, and re-test.
+**Why →** One unscrapable pod among many replicas rarely affects users; paging on it trains people to ignore pages.
 
-**Prevent →** Alert on throttling ratio above 25% for latency-sensitive services.
+**Interview tip →** "Page on symptoms, ticket on causes."
 
 </details>
 
----
+### Q122. You're designing observability for an event-driven system (Kafka consumers, no HTTP). What are the SLIs? 🔴
 
-## Backups, DR & Runbook Automation
-
-<!-- DEVOPS-SHACK:SECTION -->
-> 🎥 **Learn this hands-on with DevOps Shack** → [YouTube @devopsshack](https://www.youtube.com/@devopsshack) · [Hindi @shackverse](https://www.youtube.com/@shackverse) · [Courses at devopsshack.com](https://devopsshack.com)
-
-### Q191. `velero backup describe shop-nightly` shows `Phase: PartiallyFailed`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** Some items failed: volume snapshots failed (missing snapshot class, cloud permissions), file-level backup of a volume failed, or a resource could not be read.
-
-**Diagnose →**
-```bash
-velero backup describe shop-nightly --details
-velero backup logs shop-nightly | grep -iE "error|fail"
-kubectl get volumesnapshotclass
-```
-
-**Fix →** Fix the specific failures: add a `VolumeSnapshotClass` labeled for Velero, grant the plugin's IAM permissions, or enable file-system backup for volumes that cannot be snapshotted.
-
-**Prevent →** Alert on Velero metrics (`velero_backup_partial_failure_total`, `velero_backup_last_successful_timestamp`) and run scheduled restore tests.
-
-</details>
-
-### Q192. After restoring a namespace into the DR cluster with Velero, PVCs stay `Pending`. 🔴
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The StorageClass referenced by the PVCs does not exist in the DR cluster (different name or CSI driver), or snapshots cannot be restored across regions without copying them first.
-
-**Diagnose →**
-```bash
-kubectl get pvc -n shop
-kubectl describe pvc -n shop data-postgres-0 | grep -A5 Events
-kubectl get storageclass
-```
-
-**Fix →** Use Velero's storage class mapping (a ConfigMap for the `change-storage-class` restore item action) to map old to new classes, and copy snapshots to the DR region, or use file-system backups stored in object storage replicated across regions.
-
-**Prevent →** Keep StorageClass names consistent across clusters and include cross-region restore in DR drills.
-
-</details>
-
-### Q193. `etcdctl snapshot save` fails with `Error: context deadline exceeded`. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** etcdctl cannot reach or authenticate to etcd: missing TLS flags, wrong endpoint, or etcd is unhealthy.
-
-**Diagnose →**
-```bash
-ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-  --cert=/etc/kubernetes/pki/etcd/server.crt \
-  --key=/etc/kubernetes/pki/etcd/server.key endpoint health
-```
-
-**Fix →** Pass the CA, cert and key flags and the right endpoint to `snapshot save`, then verify with `etcdutl snapshot status <file> -w table`.
-
-**Prevent →** Wrap etcd backups in a tested script or CronJob with alerting on failure and age.
-
-</details>
-
-### Q194. A restore test fails with `pg_restore: error: could not execute query: ERROR:  role "app_rw" does not exist`. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** `pg_dump` captures objects and ownership but not cluster-wide roles. The target server lacks the roles referenced by `OWNER TO` and `GRANT` statements.
-
-**Diagnose →** Check roles on the target with `\du` in `psql`.
-
-**Fix →** Restore roles first (`pg_dumpall --roles-only` from the source, or create them via IaC), or restore with `--no-owner --no-privileges` and reapply grants.
-
-**Prevent →** Include roles in the backup set and run automated restore tests into an empty instance, which catch exactly this.
-
-</details>
-
-### Q195. You restored an RDS instance to a point in time, but the application cannot connect. 🟡
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** A point-in-time restore creates a new instance with a new endpoint, and it may get the default security group, parameter group or subnet group rather than the original ones.
-
-**Diagnose →**
-```bash
-aws rds describe-db-instances --db-instance-identifier orders-pitr \
-  --query 'DBInstances[0].{endpoint:Endpoint.Address,sgs:VpcSecurityGroups,pg:DBParameterGroups}'
-```
-
-**Fix →** Attach the correct security groups and parameter group, then point the application to the new endpoint (update a Route 53 CNAME or the secret holding the host), or rename instances to swap endpoints.
-
-**Prevent →** Script PITR in the runbook with all parameters, and use a DNS name the application resolves instead of raw endpoints.
-
-</details>
-
-### Q196. The nightly backup job reports success, but the backup files in S3 are 0 bytes. 🟢
-
-<details>
-<summary><b>Answer</b></summary>
-
-**Likely causes →** The script pipes `pg_dump | gzip | aws s3 cp -`, and without `pipefail` only the last command's exit code counts; `pg_dump` failed (auth, connection) but the upload succeeded with empty input.
-
-**Diagnose →** Check job logs for `pg_dump` errors and list object sizes:
-```bash
-aws s3 ls s3://backups/orders/ --human-readable | tail
-```
-
-**Fix →**
-```bash
-set -euo pipefail
-pg_dump -Fc "$DATABASE_URL" | aws s3 cp - "s3://backups/orders/$(date +%F).dump"
-```
-
-**Prevent →** Alert on backup size anomalies and age, and verify each backup with a restore or at least `pg_restore --list`.
-
-</details>
-
-### Q197. The backup CronJob silently stopped running. Events show `Cannot determine if job needs to be started: too many missed start time (> 100). Set or decrease .spec.startingDeadlineSeconds or check clock skew.` 🟡
-
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The CronJob was suspended or the controller could not schedule it for a long time; after more than 100 missed schedules the controller stops trying without a `startingDeadlineSeconds`.
+**Situation read →** No requests means no request-based SLIs. Users care whether events are processed correctly and on time.
 
-**Diagnose →**
-```bash
-kubectl get cronjob -n ops db-backup -o yaml | yq '.spec.suspend, .spec.startingDeadlineSeconds, .status.lastScheduleTime'
-kubectl get events -n ops --field-selector involvedObject.name=db-backup
-```
+**What I'd do →**
+1. Freshness: age of the oldest unprocessed event, or end-to-end delay from produce timestamp to processed timestamp.
+2. Correctness: ratio of successfully processed events vs those sent to a dead-letter queue.
+3. Throughput/coverage: events processed vs events produced per window.
+4. Measure consumer lag in time, not only offsets (Burrow, kafka-lag-exporter, or `kafka_consumergroup_lag` plus produce rate).
+5. Propagate trace context in message headers so traces connect producer and consumer.
+6. SLO example: 99% of events processed within 60 s; 99.9% processed without DLQ.
 
-**Fix →** Set `startingDeadlineSeconds` (for example 3600), unsuspend, and trigger a manual run: `kubectl create job --from=cronjob/db-backup db-backup-manual -n ops`.
+**Why →** Freshness and correctness map to what downstream users experience.
 
-**Prevent →** Alert on backup age, not on job status:
-```promql
-time() - kube_cronjob_status_last_successful_time{cronjob="db-backup"} > 26 * 3600
-```
+**Interview tip →** "Lag in seconds, not messages" — offset lag is meaningless without throughput context.
 
 </details>
 
-### Q198. An auto-remediation job restarted the checkout deployment 412 times this week, and nobody noticed. 🔴
+### Q123. The team uses `histogram_quantile(0.99, ...)` on dashboards and wants to average p99 across 12 pods. 🟡
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Automation turned a recurring failure (memory leak, deadlock) into silent toil. Each restart hid the symptom, and nobody alerted on how often the remediation ran.
+**Situation read →** Percentiles cannot be averaged; the average of per-pod p99s is not the service p99.
 
-**Diagnose →** Count remediation runs from automation logs or metrics, and correlate with versions and memory growth.
+**What I'd do →**
+1. Aggregate histogram buckets first, then compute the quantile:
+   ```promql
+   histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job="checkout"}[5m])))
+   ```
+2. Remove `avg(histogram_quantile(...))` panels.
+3. Check bucket boundaries match the SLO threshold (for example a `0.3` bucket for a 300 ms target).
+4. Consider native histograms in Prometheus for better accuracy.
 
-**Fix →** Open an incident or high-priority ticket to fix the underlying bug; add a rate limit to the automation (for example at most 3 restarts per hour, then page a human).
+**Why →** Averaging percentiles hides tail latency, which is what users feel.
 
-**Prevent →** Every auto-remediation emits a metric, alerts when it runs more than expected, and creates a ticket for each run.
+**Interview tip →** "Sum the buckets, then take the quantile" is the line.
 
 </details>
 
-### Q199. A Route 53 failover to the DR region took 25 minutes against an RTO of 5 minutes. 🔴
+### Q124. A team wants to add debug logging to every request in production to troubleshoot an intermittent bug. 🟢
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** Health checks were slow to mark the primary unhealthy (long interval, high failure threshold), DNS TTLs were high, and clients cached DNS beyond the TTL (JVM `networkaddress.cache.ttl`, connection pools holding old connections).
+**Situation read →** Debug logs for all traffic multiply log cost and can hurt performance; usually you only need them for a slice.
 
-**Diagnose →**
-```bash
-aws route53 get-health-check-status --health-check-id <id>
-dig +noall +answer shop.example.com
-```
-Review client DNS caching settings and connection reuse.
+**What I'd do →**
+1. Enable debug dynamically for a subset: a header, a feature flag, or one canary pod.
+2. Use trace sampling with full attributes on errors instead.
+3. Set a time limit and an owner for the change.
+4. Make sure no secrets or PII appear in debug logs.
 
-**Fix →** Use 10-second health checks with a low failure threshold, TTL of 60s or less on failover records, configure clients to respect TTLs and recycle connections, or use a global load balancer or AWS Global Accelerator instead of DNS alone.
+**Why →** Targeted debug data solves the bug without a cost spike or new risk.
 
-**Prevent →** Measure failover time in every DR drill and include client behaviour in the test.
+**Interview tip →** Mention runtime log-level switching without redeploying.
 
 </details>
 
-### Q200. The runbook linked from a page returns 404, and the on-call engineer improvised for 30 minutes. 🟢
+### Q125. You have four signals (metrics, logs, traces, profiles) in four tools. Incident responders waste time jumping between them. 🔴
 
 <details>
 <summary><b>Answer</b></summary>
 
-**Likely causes →** The wiki moved, the runbook was renamed, or it was never written; alert annotations hard-code URLs that nobody validates.
+**Situation read →** Signals are only useful if you can pivot between them in one or two clicks with the same context.
 
-**Diagnose →**
-```bash
-curl -s localhost:9090/api/v1/rules | jq -r '.data.groups[].rules[] | select(.type=="alerting") | .annotations.runbook_url' \
-  | sort -u | while read u; do printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' "$u")" "$u"; done
-```
+**What I'd do →**
+1. Standardize shared resource attributes via OpenTelemetry: `service.name`, `service.version`, `deployment.environment`, `k8s.namespace.name`.
+2. Enable exemplars on latency histograms so a spike links to an actual trace ID.
+3. Inject `trace_id` in logs and configure Grafana data source links (Tempo ↔ Loki "derived fields", traces to profiles).
+4. Put all four in one UI where possible (Grafana with Prometheus/Mimir, Loki, Tempo, Pyroscope) or ensure deep links work.
+5. Practice the pivot in game days: alert → dashboard → exemplar trace → logs → profile.
 
-**Fix →** Restore or write the runbook, update the annotation.
+**Why →** Correlation cuts MTTR more than adding any single new signal.
 
-**Prevent →** Keep runbooks in Git next to the alert rules, require `runbook_url` in CI linting, and run the link checker above on a schedule.
+**Interview tip →** Say "consistent resource attributes are the glue" — without them, correlation doesn't work.
 
 </details>
-
----
-
-[⬅ Back to SRE & Reliability](./README.md) · [🏠 Home](../README.md)
 
 <!-- DEVOPS-SHACK:FOOTER -->
 ---

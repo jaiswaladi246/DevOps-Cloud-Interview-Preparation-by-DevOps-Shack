@@ -183,7 +183,8 @@ flowchart TD
 | Bank | What it covers | Questions |
 |------|----------------|-----------|
 | [Concepts](./concepts.md) | Hierarchy, identity, networking, compute, AKS/ACR, storage, Key Vault, monitoring, Azure DevOps, Bicep, Terraform, Policy, cost, AWS mapping, best practices and rapid-fire commands | 200 |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 100 real situations with a step-by-step approach, plus 100 real error messages with diagnosis, fix and prevention | 200 |
+| [Scenarios](./scenarios.md) | "What would you do" situations with a step-by-step approach | 100 |
+| [Troubleshooting](./troubleshooting.md) | Real error messages: likely causes, diagnosis commands, fix and prevention | 100 |
 
 ## Learning path
 

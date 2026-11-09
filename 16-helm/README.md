@@ -199,12 +199,13 @@ Argo CD renders charts with the equivalent of `helm template` and applies the ou
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | Architecture and release storage, chart structure, templating, values precedence, dependencies and library charts, hooks and tests, release lifecycle, OCI, schema, Helmfile, Argo CD, secrets, best practices and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | 100 "what would you do" scenarios (chart design, environments, migrations, rollbacks, GitOps, secrets) and 100 real error messages with diagnosis and fixes |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

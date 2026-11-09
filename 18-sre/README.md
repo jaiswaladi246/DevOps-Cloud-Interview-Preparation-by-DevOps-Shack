@@ -193,12 +193,13 @@ Every network call needs a **timeout** shorter than the caller's. **Retries** ne
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | SRE vs DevOps, SLIs/SLOs/SLAs, error budgets, burn-rate math, availability math, toil, on-call, incident management, postmortems, capacity, k6, chaos engineering, release engineering, reliability patterns, DR, DORA, best practices and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | 100 "what would you do" scenarios (SLO negotiation, budget exhausted, noisy pager, running a SEV-1, retry storms, DR drills) and 100 troubleshooting drills with real error text (recording rules, Alertmanager, Grafana, k6, Chaos Mesh, Litmus, timeouts, backups) |
+| [Scenarios](./scenarios.md) | 125 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

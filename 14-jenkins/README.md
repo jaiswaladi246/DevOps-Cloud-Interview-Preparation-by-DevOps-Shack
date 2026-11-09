@@ -186,12 +186,13 @@ Back up `JENKINS_HOME` (excluding workspaces and caches), keep config in Git, an
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | Architecture and `JENKINS_HOME`, declarative and scripted syntax, CPS, shared libraries, multibranch, plugins, JCasC, Kubernetes agents, security, operations, integrations, best practices and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | 100 "what would you do" design scenarios and 100 real failures with exact error text: CPS and sandbox errors, offline agents, webhook and indexing problems, JCasC and plugin breakage, pod template failures, SonarQube, Nexus, Kaniko and Trivy issues |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

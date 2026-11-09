@@ -1167,7 +1167,7 @@ Expect follow-ups on: why the kubelet identity and not the cluster identity pull
 - Add **Managed Prometheus and Grafana** (`--enable-azure-monitor-metrics`) and alert on request error rate, not just CPU
 - Enforce "images only from this ACR" and "no privileged pods" with the **Azure Policy add-on**
 - Rebuild the same stack in **Bicep** with a deployment stack and compare it with Terraform
-- Work through the [assignments](./assignments.md) and the [scenarios and troubleshooting bank](./scenarios-and-troubleshooting.md)
+- Work through the [assignments](./assignments.md) and the [scenarios and troubleshooting bank](./troubleshooting.md)
 
 [⬅ Back to Azure for DevOps](./README.md) · [🏠 Home](../README.md)
 

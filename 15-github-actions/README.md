@@ -199,12 +199,13 @@ Re-run with debug logging, or set the `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_D
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | Syntax, triggers, matrix and concurrency, contexts and expressions, secrets and environments, reusable workflows and custom actions, cache and artifacts, runners and ARC, OIDC, hardening, cost, releases, and rapid-fire commands |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | 100 "what would you do" design scenarios and 100 real failures with the exact error text: workflows that never start, OIDC denials, `Resource not accessible by integration`, cache misses, stuck runners, ARC issues, blocked deployments |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 

@@ -4,10 +4,10 @@
 
 # DevOps & Cloud Interview Preparation — by DevOps Shack
 
-**13,200 interview questions with answers across 20 DevOps & Cloud topics, 20 hands-on labs and 500 assignments.**
+**13,200+ interview questions with answers across 20 DevOps & Cloud topics, 20 hands-on labs, 500 assignments and an ultimate roadmap.**
 Everything you need to crack DevOps, SRE and Cloud interviews, in one repo.
 
-[![Questions](https://img.shields.io/badge/Q%26As-13%2C200-C6FF4D?style=for-the-badge&labelColor=0B0F1A)](#-the-topics)
+[![Questions](https://img.shields.io/badge/Q%26As-13%2C200%2B-C6FF4D?style=for-the-badge&labelColor=0B0F1A)](#-the-topics)
 [![Topics](https://img.shields.io/badge/Topics-20-4DE8FF?style=for-the-badge&labelColor=0B0F1A)](#-the-topics)
 [![Labs](https://img.shields.io/badge/Hands--on%20labs-20-FFB84D?style=for-the-badge&labelColor=0B0F1A)](#-the-topics)
 [![Assignments](https://img.shields.io/badge/Assignments-500-FF6B9A?style=for-the-badge&labelColor=0B0F1A)](#-the-topics)
@@ -38,7 +38,15 @@ This repo is built around that reality. Every topic has the same structure: conc
 
 ---
 
+## 🧭 Start here: 00 · The Ultimate DevOps Roadmap
+
+New to DevOps, switching careers, or preparing for your next job? Open **[00 · Ultimate Roadmap](./00-ultimate-roadmap/README.md)** first. It tells you exactly what to learn, in what order, which folders to study, what to build, and how long each phase takes (3, 6 and 12-month tracks).
+
+---
+
 ## 🗺️ The topics
+
+Topics 01–11 have **4 question banks of 200** (concepts, scenarios, troubleshooting, production). Topics 12–19 have 200 concepts plus 100 scenarios and 100 troubleshooting drills, with production banks coming soon. Every topic also has a complete **hands-on lab**, **25 assignments** and a **cheatsheet**.
 
 | # | Topic | Concepts | Scenarios | Troubleshooting | Production | Lab · Assignments · Cheatsheet |
 |:-:|---|:-:|:-:|:-:|:-:|:-:|
@@ -47,20 +55,20 @@ This repo is built around that reality. Every topic has the same structure: conc
 | 03 | 🌐 [**Networking**](./03-networking/README.md) | [200](./03-networking/concepts.md) | [200](./03-networking/scenarios.md) | [200](./03-networking/troubleshooting.md) | [200](./03-networking/production.md) | [Lab](./03-networking/hands-on-lab.md) · [25](./03-networking/assignments.md) · [Sheet](./03-networking/cheatsheet.md) |
 | 04 | 🐳 [**Docker**](./04-docker/README.md) | [200](./04-docker/concepts.md) | [200](./04-docker/scenarios.md) | [200](./04-docker/troubleshooting.md) | [200](./04-docker/production.md) | [Lab](./04-docker/hands-on-lab.md) · [25](./04-docker/assignments.md) · [Sheet](./04-docker/cheatsheet.md) |
 | 05 | ☸️ [**Kubernetes**](./05-kubernetes/README.md) | [200](./05-kubernetes/concepts.md) | [200](./05-kubernetes/scenarios.md) | [200](./05-kubernetes/troubleshooting.md) | [200](./05-kubernetes/production.md) | [Lab](./05-kubernetes/hands-on-lab.md) · [25](./05-kubernetes/assignments.md) · [Sheet](./05-kubernetes/cheatsheet.md) |
-| 06 | 🔁 [**CI/CD**](./06-cicd/README.md) | [200](./06-cicd/concepts.md) | [200](./06-cicd/scenarios.md) | [200](./06-cicd/troubleshooting.md) | [200](./06-cicd/production.md) | [Lab](./06-cicd/hands-on-lab.md) · [25](./06-cicd/assignments.md) · [Sheet](./06-cicd/cheatsheet.md) |
+| 06 | 🔁 [**CI/CD Fundamentals**](./06-cicd/README.md) | [200](./06-cicd/concepts.md) | [200](./06-cicd/scenarios.md) | [200](./06-cicd/troubleshooting.md) | [200](./06-cicd/production.md) | [Lab](./06-cicd/hands-on-lab.md) · [25](./06-cicd/assignments.md) · [Sheet](./06-cicd/cheatsheet.md) |
 | 07 | 🏗️ [**Terraform**](./07-terraform/README.md) | [200](./07-terraform/concepts.md) | [200](./07-terraform/scenarios.md) | [200](./07-terraform/troubleshooting.md) | [200](./07-terraform/production.md) | [Lab](./07-terraform/hands-on-lab.md) · [25](./07-terraform/assignments.md) · [Sheet](./07-terraform/cheatsheet.md) |
 | 08 | ⚙️ [**Ansible**](./08-ansible/README.md) | [200](./08-ansible/concepts.md) | [200](./08-ansible/scenarios.md) | [200](./08-ansible/troubleshooting.md) | [200](./08-ansible/production.md) | [Lab](./08-ansible/hands-on-lab.md) · [25](./08-ansible/assignments.md) · [Sheet](./08-ansible/cheatsheet.md) |
 | 09 | ☁️ [**AWS**](./09-aws/README.md) | [200](./09-aws/concepts.md) | [200](./09-aws/scenarios.md) | [200](./09-aws/troubleshooting.md) | [200](./09-aws/production.md) | [Lab](./09-aws/hands-on-lab.md) · [25](./09-aws/assignments.md) · [Sheet](./09-aws/cheatsheet.md) |
 | 10 | 📈 [**Monitoring & Observability**](./10-monitoring/README.md) | [200](./10-monitoring/concepts.md) | [200](./10-monitoring/scenarios.md) | [200](./10-monitoring/troubleshooting.md) | [200](./10-monitoring/production.md) | [Lab](./10-monitoring/hands-on-lab.md) · [25](./10-monitoring/assignments.md) · [Sheet](./10-monitoring/cheatsheet.md) |
 | 11 | 🛡️ [**DevSecOps**](./11-devsecops/README.md) | [200](./11-devsecops/concepts.md) | [200](./11-devsecops/scenarios.md) | [200](./11-devsecops/troubleshooting.md) | [200](./11-devsecops/production.md) | [Lab](./11-devsecops/hands-on-lab.md) · [25](./11-devsecops/assignments.md) · [Sheet](./11-devsecops/cheatsheet.md) |
-| 12 | 🐚 [**Shell Scripting (Bash)**](./12-shell-scripting/README.md) | [200](./12-shell-scripting/concepts.md) | [200](./12-shell-scripting/scenarios-and-troubleshooting.md) | [Lab](./12-shell-scripting/hands-on-lab.md) · [25](./12-shell-scripting/assignments.md) · [Sheet](./12-shell-scripting/cheatsheet.md) |
-| 13 | 🐍 [**Python for DevOps**](./13-python-for-devops/README.md) | [200](./13-python-for-devops/concepts.md) | [200](./13-python-for-devops/scenarios-and-troubleshooting.md) | [Lab](./13-python-for-devops/hands-on-lab.md) · [25](./13-python-for-devops/assignments.md) · [Sheet](./13-python-for-devops/cheatsheet.md) |
-| 14 | 🤵 [**Jenkins**](./14-jenkins/README.md) | [200](./14-jenkins/concepts.md) | [200](./14-jenkins/scenarios-and-troubleshooting.md) | [Lab](./14-jenkins/hands-on-lab.md) · [25](./14-jenkins/assignments.md) · [Sheet](./14-jenkins/cheatsheet.md) |
-| 15 | ⚡ [**GitHub Actions**](./15-github-actions/README.md) | [200](./15-github-actions/concepts.md) | [200](./15-github-actions/scenarios-and-troubleshooting.md) | [Lab](./15-github-actions/hands-on-lab.md) · [25](./15-github-actions/assignments.md) · [Sheet](./15-github-actions/cheatsheet.md) |
-| 16 | ⎈ [**Helm**](./16-helm/README.md) | [200](./16-helm/concepts.md) | [200](./16-helm/scenarios-and-troubleshooting.md) | [Lab](./16-helm/hands-on-lab.md) · [25](./16-helm/assignments.md) · [Sheet](./16-helm/cheatsheet.md) |
-| 17 | 🔄 [**GitOps & ArgoCD**](./17-gitops-argocd/README.md) | [200](./17-gitops-argocd/concepts.md) | [200](./17-gitops-argocd/scenarios-and-troubleshooting.md) | [Lab](./17-gitops-argocd/hands-on-lab.md) · [25](./17-gitops-argocd/assignments.md) · [Sheet](./17-gitops-argocd/cheatsheet.md) |
-| 18 | 🚨 [**SRE & Reliability**](./18-sre/README.md) | [200](./18-sre/concepts.md) | [200](./18-sre/scenarios-and-troubleshooting.md) | [Lab](./18-sre/hands-on-lab.md) · [25](./18-sre/assignments.md) · [Sheet](./18-sre/cheatsheet.md) |
-| 19 | 🔷 [**Azure for DevOps**](./19-azure/README.md) | [200](./19-azure/concepts.md) | [200](./19-azure/scenarios-and-troubleshooting.md) | [Lab](./19-azure/hands-on-lab.md) · [25](./19-azure/assignments.md) · [Sheet](./19-azure/cheatsheet.md) |
+| 12 | 🐚 [**Shell Scripting (Bash)**](./12-shell-scripting/README.md) | [200](./12-shell-scripting/concepts.md) | [100](./12-shell-scripting/scenarios.md) | [100](./12-shell-scripting/troubleshooting.md) | coming soon | [Lab](./12-shell-scripting/hands-on-lab.md) · [25](./12-shell-scripting/assignments.md) · [Sheet](./12-shell-scripting/cheatsheet.md) |
+| 13 | 🐍 [**Python for DevOps**](./13-python-for-devops/README.md) | [200](./13-python-for-devops/concepts.md) | [100](./13-python-for-devops/scenarios.md) | [100](./13-python-for-devops/troubleshooting.md) | coming soon | [Lab](./13-python-for-devops/hands-on-lab.md) · [25](./13-python-for-devops/assignments.md) · [Sheet](./13-python-for-devops/cheatsheet.md) |
+| 14 | 🤵 [**Jenkins**](./14-jenkins/README.md) | [200](./14-jenkins/concepts.md) | [100](./14-jenkins/scenarios.md) | [100](./14-jenkins/troubleshooting.md) | coming soon | [Lab](./14-jenkins/hands-on-lab.md) · [25](./14-jenkins/assignments.md) · [Sheet](./14-jenkins/cheatsheet.md) |
+| 15 | ⚡ [**GitHub Actions**](./15-github-actions/README.md) | [200](./15-github-actions/concepts.md) | [100](./15-github-actions/scenarios.md) | [100](./15-github-actions/troubleshooting.md) | coming soon | [Lab](./15-github-actions/hands-on-lab.md) · [25](./15-github-actions/assignments.md) · [Sheet](./15-github-actions/cheatsheet.md) |
+| 16 | ⎈ [**Helm**](./16-helm/README.md) | [200](./16-helm/concepts.md) | [100](./16-helm/scenarios.md) | [100](./16-helm/troubleshooting.md) | coming soon | [Lab](./16-helm/hands-on-lab.md) · [25](./16-helm/assignments.md) · [Sheet](./16-helm/cheatsheet.md) |
+| 17 | 🔄 [**GitOps & ArgoCD**](./17-gitops-argocd/README.md) | [200](./17-gitops-argocd/concepts.md) | [100](./17-gitops-argocd/scenarios.md) | [100](./17-gitops-argocd/troubleshooting.md) | coming soon | [Lab](./17-gitops-argocd/hands-on-lab.md) · [25](./17-gitops-argocd/assignments.md) · [Sheet](./17-gitops-argocd/cheatsheet.md) |
+| 18 | 🚨 [**SRE & Reliability**](./18-sre/README.md) | [200](./18-sre/concepts.md) | [125](./18-sre/scenarios.md) | [100](./18-sre/troubleshooting.md) | coming soon | [Lab](./18-sre/hands-on-lab.md) · [25](./18-sre/assignments.md) · [Sheet](./18-sre/cheatsheet.md) |
+| 19 | 🔷 [**Azure for DevOps**](./19-azure/README.md) | [200](./19-azure/concepts.md) | [100](./19-azure/scenarios.md) | [100](./19-azure/troubleshooting.md) | coming soon | [Lab](./19-azure/hands-on-lab.md) · [25](./19-azure/assignments.md) · [Sheet](./19-azure/cheatsheet.md) |
 
 ### 🎯 20 · Real-World Interview (cross-topic, 1,200 questions)
 
@@ -83,7 +91,8 @@ Plus the [**capstone project**](./20-real-world-interview/hands-on-lab.md), [**2
 
 ```mermaid
 flowchart LR
-    A["🐧 Linux"] --> B["🌿 Git"]
+    R0["🧭 00 Roadmap"] --> A["🐧 Linux"]
+    A --> B["🌿 Git"]
     A --> S["🐚 Shell Scripting"]
     S --> P["🐍 Python"]
     B --> C["🌐 Networking"]
@@ -128,7 +137,7 @@ flowchart TD
     T --> CS["cheatsheet.md<br/>commands + top 15 one-liners"]
 ```
 
-Specialised topics (12–19) combine scenarios and troubleshooting into one 200-question bank next to concepts. Every question is tagged by level: 🟢 **Beginner** · 🟡 **Intermediate** · 🔴 **Advanced**. Answers are hidden behind a click, so you can test yourself first.
+Every question is tagged by level: 🟢 **Beginner** · 🟡 **Intermediate** · 🔴 **Advanced**. Answers are hidden behind a click, so you can test yourself first.
 
 ---
 

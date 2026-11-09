@@ -227,12 +227,13 @@ The application controller is a StatefulSet; shard it across clusters by raising
 
 ## Question banks
 
-Two banks of 200 questions each, with collapsible answers. 400 questions in total, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
+Three banks with collapsible answers: 200 concepts, 100 scenarios and 100 troubleshooting drills, tagged 🟢 Beginner, 🟡 Intermediate, 🔴 Advanced.
 
 | Bank | Questions | What it covers |
 |------|-----------|----------------|
 | [Concepts](./concepts.md) | 200 | OpenGitOps principles, Argo CD architecture, the Application CRD, sync policies, waves, hooks, health and Lua, diffing, AppProjects and RBAC, ApplicationSets, Helm and Kustomize sources, Rollouts, Image Updater, notifications, secrets, Flux comparison, scaling, DR, and rapid-fire CLI questions |
-| [Scenarios & Troubleshooting](./scenarios-and-troubleshooting.md) | 200 | 100 "what would you do" scenarios (repo design, promotion, multi-cluster, tenancy, canaries, upgrades, DR) and 100 real failures with exact error text (`OutOfSync` loops, `ComparisonError`, `permission denied`, project restrictions, stuck hooks, analysis failures, sealed secret decryption) |
+| [Scenarios](./scenarios.md) | 100 | "What would you do" situations with a step-by-step approach |
+| [Troubleshooting](./troubleshooting.md) | 100 | Real error messages: likely causes, diagnosis commands, fix and prevention |
 
 ## Learning path
 
